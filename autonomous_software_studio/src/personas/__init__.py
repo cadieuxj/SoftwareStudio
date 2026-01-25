@@ -7,9 +7,23 @@ This package contains the system prompts for each agent persona:
 - qa_prompt.md: QA Engineer persona
 
 Prompts are loaded dynamically by the BaseAgent class based on profile_name.
+The PromptTemplateManager provides advanced template rendering and validation.
 """
 
 from pathlib import Path
+
+from src.personas.template_manager import (
+    PERSONA_VARIABLES,
+    PromptTemplateManager,
+    TemplateError,
+    TemplateMetadata,
+    TemplateNotFoundError,
+    TemplateRenderError,
+    TemplateValidationError,
+    TemplateVariable,
+    ValidationResult,
+    validate_all_templates,
+)
 
 # Directory containing persona prompts
 PERSONAS_DIR = Path(__file__).parent
@@ -58,8 +72,20 @@ def load_prompt(profile_name: str) -> str:
 
 
 __all__ = [
+    # Core exports
     "PERSONAS_DIR",
     "PROFILES",
     "get_prompt_path",
     "load_prompt",
+    # Template manager exports
+    "PERSONA_VARIABLES",
+    "PromptTemplateManager",
+    "TemplateError",
+    "TemplateMetadata",
+    "TemplateNotFoundError",
+    "TemplateRenderError",
+    "TemplateValidationError",
+    "TemplateVariable",
+    "ValidationResult",
+    "validate_all_templates",
 ]
