@@ -1,0 +1,28 @@
+```mermaid
+stateDiagram-v2
+    [*] --> PM
+    PM --> Architect
+    Architect --> HumanGate
+
+    HumanGate --> Engineer: APPROVE
+    HumanGate --> Architect: REJECT (arch)
+    HumanGate --> PM: REJECT (prd)
+
+    Engineer --> QA
+
+    QA --> [*]: qa_passed = true
+    QA --> Engineer: qa_passed = false & iterations < max
+    QA --> HumanHelp: iterations >= max
+
+    HumanHelp --> [*]
+
+    note right of HumanGate
+        Interrupt point
+        Awaits human approval
+    end note
+
+    note right of QA
+        Repair loop with
+        max 5 iterations
+    end note
+```
