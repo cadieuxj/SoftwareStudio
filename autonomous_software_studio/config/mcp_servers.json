@@ -1,0 +1,28 @@
+{
+  "servers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/workspace"],
+      "description": "Access to project files"
+    },
+    "browser": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-puppeteer"],
+      "description": "Web browsing capability"
+    },
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_TOKEN": "${GITHUB_TOKEN}"
+      },
+      "description": "GitHub integration"
+    }
+  },
+  "agent_assignments": {
+    "pm": ["browser", "github"],
+    "arch": ["filesystem", "browser"],
+    "eng": ["filesystem", "github"],
+    "qa": ["filesystem"]
+  }
+}

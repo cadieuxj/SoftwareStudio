@@ -430,7 +430,7 @@ def route_after_human_gate(state: AgentState) -> Literal["engineer", "architect"
             return "architect"  # Default to architect
     else:
         # No decision yet - stay at gate (interrupt should prevent this)
-        logger.warning("No decision provided at human gate")
+        logger.debug("No decision provided at human gate; awaiting human input.")
         return "human_gate"
 
 

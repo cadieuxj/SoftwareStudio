@@ -8,6 +8,7 @@ isolation for multi-agent orchestration.
 from __future__ import annotations
 
 import logging
+import os
 import re
 import shutil
 import subprocess
@@ -155,7 +156,14 @@ class ClaudeCLIWrapper:
         self._logger = self._setup_logger()
 
         # Find and validate Claude binary
-        self._claude_binary = claude_binary or self._find_claude_binary()
+        env_binary = os.getenv("CLAUDE_BINARY")
+        if claude_binary is None and env_binary:
+            claude_binary = env_binary
+        self._claude_binary = (
+            self._resolve_binary(claude_binary)
+            if claude_binary
+            else self._find_claude_binary()
+        )
 
     def _setup_logger(self) -> logging.Logger:
         """Set up logging for wrapper execution.
@@ -212,7 +220,18 @@ class ClaudeCLIWrapper:
 
         self._logger.warning("Claude binary not found in PATH or common locations")
         raise ClaudeNotFoundError(
-            "Claude CLI not found. Please install claude-code or provide path via claude_binary parameter."
+            "Claude CLI not found. Please install claude-code or set CLAUDE_BINARY "
+            "or provide path via claude_binary parameter."
+        )
+
+    def _resolve_binary(self, binary: str) -> str:
+        """Resolve a provided Claude binary path or name."""
+        resolved = shutil.which(binary) or binary
+        if Path(resolved).exists() and Path(resolved).is_file():
+            self._logger.info(f"Using Claude binary at: {resolved}")
+            return str(resolved)
+        raise ClaudeNotFoundError(
+            f"Claude CLI not found at '{binary}'. Install claude-code or set CLAUDE_BINARY."
         )
 
     def _get_config(self) -> EnvironmentConfig:

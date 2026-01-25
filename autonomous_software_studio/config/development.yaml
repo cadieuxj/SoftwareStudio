@@ -1,0 +1,18 @@
+orchestrator:
+  max_sessions: 20
+  session_timeout: 7200
+  checkpoint_interval: 30
+  log_level: DEBUG
+
+agents:
+  timeout: 300
+  max_retries: 2
+
+database:
+  type: sqlite
+  host: localhost
+  port: 0
+
+monitoring:
+  enabled: true
+  prometheus_port: 9091

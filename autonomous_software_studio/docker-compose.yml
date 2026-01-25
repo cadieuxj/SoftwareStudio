@@ -1,0 +1,39 @@
+services:
+  orchestrator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./docs:/app/docs
+      - ./reports:/app/reports
+      - ./projects:/app/projects
+    environment:
+      - ANTHROPIC_API_KEY_PM=${ANTHROPIC_API_KEY_PM}
+      - ANTHROPIC_API_KEY_ARCH=${ANTHROPIC_API_KEY_ARCH}
+      - ANTHROPIC_API_KEY_ENG=${ANTHROPIC_API_KEY_ENG}
+      - ANTHROPIC_API_KEY_QA=${ANTHROPIC_API_KEY_QA}
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.dashboard
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./docs:/app/docs
+      - ./reports:/app/reports
+      - ./projects:/app/projects
+    ports:
+      - "8501:8501"
+    depends_on:
+      orchestrator:
+        condition: service_healthy

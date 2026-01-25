@@ -11,6 +11,7 @@ import logging
 import sqlite3
 import threading
 import uuid
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
@@ -24,7 +25,6 @@ try:
     from langgraph.checkpoint.sqlite import SqliteSaver
 except ModuleNotFoundError:  # pragma: no cover - optional dependency
     SqliteSaver = None
-from langgraph.types import Command
 
 from src.orchestration.state import (
     AgentState,
@@ -448,15 +448,30 @@ class Orchestrator:
         self._store = SessionStore(self.config.db_path)
         self._workflow_nodes = WorkflowNodes()
         self._lock = threading.Lock()
+        self._metrics = {
+            "approvals": 0,
+            "rejections": 0,
+        }
 
         # Initialize checkpointer
-        if self.config.use_sqlite_checkpointer and SqliteSaver is not None:
+        if self.config.use_sqlite_checkpointer:
             checkpoint_db = self.config.db_path.parent / "checkpoints.db"
             checkpoint_db.parent.mkdir(parents=True, exist_ok=True)
-            self._checkpointer = SqliteSaver.from_conn_string(str(checkpoint_db))
+            if SqliteSaver is not None:
+                self._checkpointer = SqliteSaver.from_conn_string(str(checkpoint_db))
+            else:
+                try:
+                    from src.orchestration.sqlite_checkpointer import LocalSqliteSaver
+
+                    self._checkpointer = LocalSqliteSaver(checkpoint_db)
+                    logger.info("Using local SQLite checkpointer fallback.")
+                except Exception as exc:
+                    logger.warning(
+                        "SqliteSaver unavailable; falling back to MemorySaver. (%s)",
+                        exc,
+                    )
+                    self._checkpointer = MemorySaver()
         else:
-            if self.config.use_sqlite_checkpointer and SqliteSaver is None:
-                logger.warning("SqliteSaver unavailable; falling back to MemorySaver.")
             self._checkpointer = MemorySaver()
 
         # Build workflow
@@ -579,21 +594,21 @@ class Orchestrator:
         if state is None:
             raise SessionNotFoundError(f"Session state not found: {session_id}")
 
-        # Inject approval decision
-        state = StateManager.update_state(
-            state,
-            {"decision": "APPROVE", "reject_phase": None},
-        )
-
         logger.info(f"Approving session {session_id}")
+        self._metrics["approvals"] += 1
 
         # Resume execution
         thread_config = {"configurable": {"thread_id": session_id}}
 
         try:
-            # Use Command to resume with updated state
+            # Update state at human gate, then resume execution
+            self._graph.update_state(
+                thread_config,
+                {"decision": "APPROVE", "reject_phase": None},
+                as_node="human_gate",
+            )
             result = self._graph.invoke(
-                Command(resume=state),
+                None,
                 config=thread_config,
             )
 
@@ -653,22 +668,29 @@ class Orchestrator:
         else:
             state = StateManager.add_feedback(state, feedback, "architectural")
 
-        state = StateManager.update_state(
-            state,
-            {
-                "decision": "REJECT",
-                "reject_phase": reject_to,
-            },
-        )
-
         logger.info(f"Rejecting session {session_id} back to {reject_to}")
+        self._metrics["rejections"] += 1
 
         # Resume execution
         thread_config = {"configurable": {"thread_id": session_id}}
 
         try:
+            updates = {
+                "decision": "REJECT",
+                "reject_phase": reject_to,
+            }
+            if reject_to == "pm":
+                updates["prd_feedback"] = state.get("prd_feedback", [])
+            else:
+                updates["architectural_feedback"] = state.get("architectural_feedback", [])
+
+            self._graph.update_state(
+                thread_config,
+                updates,
+                as_node="human_gate",
+            )
             result = self._graph.invoke(
-                Command(resume=state),
+                None,
                 config=thread_config,
             )
 
@@ -925,6 +947,88 @@ class Orchestrator:
         cutoff = datetime.now() - timedelta(days=self.config.session_ttl_days)
         return info.updated_at < cutoff
 
+    def _build_metrics(self) -> str:
+        """Build Prometheus-style metrics output."""
+        sessions = self.list_sessions()
+        counts: dict[str, int] = {}
+        for session in sessions:
+            counts[session.status.value] = counts.get(session.status.value, 0) + 1
+
+        lines = [
+            "# HELP orchestrator_sessions_total Total number of sessions.",
+            "# TYPE orchestrator_sessions_total gauge",
+            f"orchestrator_sessions_total {len(sessions)}",
+            "# HELP orchestrator_sessions_by_status Sessions grouped by status.",
+            "# TYPE orchestrator_sessions_by_status gauge",
+        ]
+        for status, count in counts.items():
+            lines.append(f'orchestrator_sessions_by_status{{status="{status}"}} {count}')
+
+        lines.extend(
+            [
+                "# HELP orchestrator_approvals_total Total approvals submitted.",
+                "# TYPE orchestrator_approvals_total counter",
+                f"orchestrator_approvals_total {self._metrics['approvals']}",
+                "# HELP orchestrator_rejections_total Total rejections submitted.",
+                "# TYPE orchestrator_rejections_total counter",
+                f"orchestrator_rejections_total {self._metrics['rejections']}",
+            ]
+        )
+        return "\n".join(lines) + "\n"
+
+    def run_server(self, host: str = "0.0.0.0", port: int = 8000) -> None:
+        """Run a lightweight health and metrics server."""
+
+        orchestrator = self
+
+        class HealthHandler(BaseHTTPRequestHandler):
+            def do_GET(self) -> None:  # noqa: N802
+                if self.path == "/healthz":
+                    self.send_response(200)
+                    self.send_header("Content-Type", "text/plain")
+                    self.end_headers()
+                    self.wfile.write(b"ok")
+                    return
+
+                if self.path == "/readyz":
+                    try:
+                        orchestrator.list_sessions(limit=1)
+                    except Exception as exc:  # pragma: no cover - defensive
+                        self.send_response(503)
+                        self.send_header("Content-Type", "text/plain")
+                        self.end_headers()
+                        self.wfile.write(str(exc).encode("utf-8"))
+                        return
+
+                    self.send_response(200)
+                    self.send_header("Content-Type", "text/plain")
+                    self.end_headers()
+                    self.wfile.write(b"ready")
+                    return
+
+                if self.path == "/metrics":
+                    metrics = orchestrator._build_metrics()
+                    self.send_response(200)
+                    self.send_header("Content-Type", "text/plain; version=0.0.4")
+                    self.end_headers()
+                    self.wfile.write(metrics.encode("utf-8"))
+                    return
+
+                self.send_response(404)
+                self.send_header("Content-Type", "text/plain")
+                self.end_headers()
+                self.wfile.write(b"not found")
+
+            def log_message(self, format: str, *args: object) -> None:  # noqa: A003
+                logger.info("health_server: " + format, *args)
+
+        server = ThreadingHTTPServer((host, port), HealthHandler)
+        logger.info("Health server listening on %s:%s", host, port)
+        try:
+            server.serve_forever()
+        finally:
+            server.server_close()
+
 
 def main() -> None:
     """Entry point for testing the orchestrator."""
@@ -945,6 +1049,23 @@ def main() -> None:
         "--cleanup",
         action="store_true",
         help="Clean up expired sessions",
+    )
+    parser.add_argument(
+        "--server",
+        action="store_true",
+        help="Run health and metrics server",
+    )
+    parser.add_argument(
+        "--host",
+        type=str,
+        default="0.0.0.0",
+        help="Server host for --server",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=8000,
+        help="Server port for --server",
     )
 
     args = parser.parse_args()
@@ -972,6 +1093,9 @@ def main() -> None:
     elif args.cleanup:
         count = orchestrator.cleanup_expired_sessions()
         print(f"Cleaned up {count} expired sessions")
+
+    elif args.server:
+        orchestrator.run_server(host=args.host, port=args.port)
 
     else:
         print("Orchestrator CLI")

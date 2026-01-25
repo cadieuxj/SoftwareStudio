@@ -1,0 +1,18 @@
+orchestrator:
+  max_sessions: 100
+  session_timeout: 3600
+  checkpoint_interval: 60
+  log_level: INFO
+
+agents:
+  timeout: 300
+  max_retries: 3
+
+database:
+  type: postgresql
+  host: ${DB_HOST}
+  port: 5432
+
+monitoring:
+  enabled: true
+  prometheus_port: 9090

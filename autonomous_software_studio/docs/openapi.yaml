@@ -1,0 +1,40 @@
+openapi: "3.0.3"
+info:
+  title: Autonomous Software Studio API
+  version: "1.0.0"
+  description: Health and monitoring endpoints for the orchestrator.
+servers:
+  - url: http://localhost:8000
+paths:
+  /healthz:
+    get:
+      summary: Liveness probe
+      responses:
+        "200":
+          description: Service is alive.
+          content:
+            text/plain:
+              schema:
+                type: string
+  /readyz:
+    get:
+      summary: Readiness probe
+      responses:
+        "200":
+          description: Service is ready to accept requests.
+          content:
+            text/plain:
+              schema:
+                type: string
+        "503":
+          description: Service is not ready.
+  /metrics:
+    get:
+      summary: Prometheus metrics
+      responses:
+        "200":
+          description: Metrics in Prometheus exposition format.
+          content:
+            text/plain:
+              schema:
+                type: string

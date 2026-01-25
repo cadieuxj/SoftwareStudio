@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import html
+import os
+import shutil
 import sys
 import time
 from dataclasses import dataclass
@@ -90,6 +92,29 @@ def inject_styles() -> None:
             font-family: "Space Grotesk", "Montserrat", "Trebuchet MS", sans-serif;
         }
 
+        .stApp, .stMarkdown, .stMarkdown p, .stTextInput label, .stTextArea label,
+        .stSelectbox label, .stExpanderHeader, .stCaption, .stMetricLabel,
+        .stSidebar .stMarkdown, .stSidebar .stCaption {
+            color: var(--ink) !important;
+        }
+
+        .stTextInput input, .stTextArea textarea {
+            color: var(--ink) !important;
+            background-color: #ffffff !important;
+        }
+
+        .stButton > button {
+            background: var(--accent);
+            color: #ffffff;
+            border: none;
+            border-radius: 999px;
+        }
+
+        .stButton > button:disabled {
+            background: #9db2b8;
+            color: #f2f2f2;
+        }
+
         .block-container {
             padding-top: 2.5rem;
         }
@@ -152,6 +177,22 @@ def inject_styles() -> None:
     )
 
 
+def request_rerun() -> None:
+    """Trigger a Streamlit rerun across versions."""
+    if hasattr(st, "rerun"):
+        st.rerun()
+    elif hasattr(st, "experimental_rerun"):
+        st.experimental_rerun()
+
+
+def has_claude_cli() -> bool:
+    """Check whether the Claude CLI is available."""
+    override = os.getenv("CLAUDE_BINARY")
+    if override:
+        return bool(shutil.which(override) or Path(override).exists())
+    return bool(shutil.which("claude") or shutil.which("claude-code"))
+
+
 def build_session_rows(sessions: Iterable[SessionInfo]) -> list[SessionRow]:
     """Convert session info into render-friendly rows."""
     rows: list[SessionRow] = []
@@ -209,9 +250,34 @@ def read_text_safe(path: Path | str | None) -> str | None:
         return None
 
 
-def render_session_management(sessions: list[SessionRow]) -> None:
+def render_session_management(orchestrator: Orchestrator, sessions: list[SessionRow]) -> None:
     """Render the session management page."""
     st.title("Active Sessions")
+
+    cli_available = has_claude_cli()
+    if not cli_available:
+        st.warning(
+            "Claude CLI not found. Install claude-code or set CLAUDE_BINARY "
+            "before starting sessions."
+        )
+
+    with st.expander("Start New Session", expanded=False):
+        mission = st.text_area("Mission", key="new_session_mission")
+        project_name = st.text_input("Project name (optional)", key="new_session_project")
+        if st.button("Start Session", key="start_session", disabled=not cli_available):
+            if not mission.strip():
+                st.warning("Please provide a mission before starting.")
+            else:
+                try:
+                    session_id = orchestrator.start_new_session(
+                        mission,
+                        project_name.strip() or None,
+                    )
+                    st.success(f"Session created: {session_id}")
+                    st.session_state["selected_session_id"] = session_id
+                    request_rerun()
+                except Exception as exc:
+                    st.error(f"Failed to start session: {exc}")
 
     if not sessions:
         st.info("No active sessions found. Start a new session to populate the board.")
@@ -352,7 +418,7 @@ def render_approval_interface(orchestrator: Orchestrator, sessions: list[Session
     if not approval_required:
         st.info("Session is not awaiting approval. Actions are disabled.")
 
-    if st.button("✅ Approve & Build", disabled=not approval_required):
+    if st.button("Approve & Build", disabled=not approval_required):
         try:
             orchestrator.approve_and_continue(session_id)
             st.success("Building in progress...")
@@ -403,7 +469,7 @@ def render_live_logs(orchestrator: Orchestrator, sessions: list[SessionRow]) -> 
 
     if auto_refresh and orchestrator.is_running(session_id):
         time.sleep(2)
-        st.experimental_rerun()
+        request_rerun()
 
 
 def render_metrics_analytics(sessions: list[SessionRow]) -> None:
@@ -471,7 +537,7 @@ def main() -> None:
     )
 
     if page == "Session Management":
-        render_session_management(sessions)
+        render_session_management(orchestrator, sessions)
     elif page == "Artifact Review":
         render_artifact_review(orchestrator, sessions)
     elif page == "Approval Interface":

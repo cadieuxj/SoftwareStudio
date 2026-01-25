@@ -1,0 +1,5 @@
+{
+  "status": "not_generated",
+  "note": "Run pytest with benchmark options to populate this file.",
+  "command": "pytest tests/e2e/ --benchmark-only --benchmark-json=reports/e2e_benchmarks.json"
+}
