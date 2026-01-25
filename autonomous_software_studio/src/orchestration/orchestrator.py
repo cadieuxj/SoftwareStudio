@@ -19,7 +19,11 @@ from pathlib import Path
 from typing import Any, Iterator
 
 from langgraph.checkpoint.memory import MemorySaver
-from langgraph.checkpoint.sqlite import SqliteSaver
+
+try:
+    from langgraph.checkpoint.sqlite import SqliteSaver
+except ModuleNotFoundError:  # pragma: no cover - optional dependency
+    SqliteSaver = None
 from langgraph.types import Command
 
 from src.orchestration.state import (
@@ -446,11 +450,13 @@ class Orchestrator:
         self._lock = threading.Lock()
 
         # Initialize checkpointer
-        if self.config.use_sqlite_checkpointer:
+        if self.config.use_sqlite_checkpointer and SqliteSaver is not None:
             checkpoint_db = self.config.db_path.parent / "checkpoints.db"
             checkpoint_db.parent.mkdir(parents=True, exist_ok=True)
             self._checkpointer = SqliteSaver.from_conn_string(str(checkpoint_db))
         else:
+            if self.config.use_sqlite_checkpointer and SqliteSaver is None:
+                logger.warning("SqliteSaver unavailable; falling back to MemorySaver.")
             self._checkpointer = MemorySaver()
 
         # Build workflow
@@ -707,6 +713,73 @@ class Orchestrator:
             "bug_report": Path(state["path_bug_report"]) if state.get("path_bug_report") else None,
             "work_dir": Path(state["work_dir"]) if state.get("work_dir") else None,
         }
+
+    def get_recent_logs(self, session_id: str, lines: int = 50) -> str:
+        """Get recent logs for a session.
+
+        This method first tries to return structured execution logs stored in
+        the session state. If none are available, it falls back to tailing
+        agent log files from the global logs directory.
+
+        Args:
+            session_id: The session identifier.
+            lines: Maximum number of log lines to return.
+
+        Returns:
+            A string containing recent log lines.
+
+        Raises:
+            SessionNotFoundError: If session doesn't exist.
+        """
+        state = self._store.get_state(session_id)
+
+        if state is None:
+            raise SessionNotFoundError(f"Session not found: {session_id}")
+
+        execution_log = state.get("execution_log", [])
+        if execution_log:
+            formatted: list[str] = []
+            for entry in execution_log[-lines:]:
+                formatted.append(
+                    f"{entry.get('timestamp', '')} | {entry.get('agent', '')} | "
+                    f"{entry.get('status', '')} | {entry.get('error') or ''}".strip()
+                )
+            return "\n".join(formatted)
+
+        log_dir = Path("logs")
+        if not log_dir.exists():
+            return ""
+
+        log_files = [
+            log_dir / "wrapper_execution.log",
+            *sorted(log_dir.glob("agent_*.log")),
+        ]
+
+        sections: list[str] = []
+        for log_file in log_files:
+            if not log_file.exists():
+                continue
+            try:
+                content = log_file.read_text(encoding="utf-8", errors="ignore")
+            except Exception:
+                continue
+            tail = "\n".join(content.splitlines()[-lines:])
+            if tail:
+                sections.append(f"--- {log_file.name} ---\n{tail}")
+
+        return "\n\n".join(sections)
+
+    def is_running(self, session_id: str) -> bool:
+        """Check if a session is currently running.
+
+        Args:
+            session_id: The session identifier.
+
+        Returns:
+            True if session status is RUNNING.
+        """
+        info = self.get_session_status(session_id)
+        return info.status == SessionStatus.RUNNING
 
     def list_sessions(
         self,
