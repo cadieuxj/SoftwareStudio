@@ -52,6 +52,12 @@ logs/*.log
 # Session data (sensitive)
 config/profiles/*/session_data/
 
+# Runtime artifacts
+backups/
+data/orchestrator.db
+data/checkpoints.db
+projects/
+
 # OS files
 .DS_Store
 Thumbs.db
