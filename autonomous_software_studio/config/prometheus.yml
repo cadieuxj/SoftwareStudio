@@ -1,0 +1,49 @@
+# =============================================================================
+# Prometheus Configuration for Autonomous Software Studio
+# =============================================================================
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'autonomous-software-studio'
+
+# Alertmanager configuration (optional)
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+# Rule files (optional)
+rule_files: []
+
+# Scrape configurations
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Orchestrator service metrics
+  - job_name: 'orchestrator'
+    static_configs:
+      - targets: ['orchestrator:8000']
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+
+  # Dashboard service health (Streamlit doesn't expose Prometheus metrics by default)
+  - job_name: 'dashboard'
+    static_configs:
+      - targets: ['dashboard:8501']
+    metrics_path: '/_stcore/health'
+    scrape_interval: 60s
+
+  # PostgreSQL metrics (requires postgres_exporter - optional)
+  # - job_name: 'postgres'
+  #   static_configs:
+  #     - targets: ['postgres-exporter:9187']
+
+  # Redis metrics (requires redis_exporter - optional)
+  # - job_name: 'redis'
+  #   static_configs:
+  #     - targets: ['redis-exporter:9121']

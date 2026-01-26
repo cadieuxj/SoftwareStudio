@@ -1,0 +1,38 @@
+# =============================================================================
+# Streamlit Configuration - Autonomous Software Studio Dashboard
+# High-contrast theme for better readability
+# =============================================================================
+
+[global]
+developmentMode = false
+showWarningOnDirectExecution = false
+
+[server]
+headless = true
+port = 8501
+enableCORS = false
+enableXsrfProtection = true
+maxUploadSize = 200
+runOnSave = false
+
+[browser]
+gatherUsageStats = false
+serverAddress = "0.0.0.0"
+
+[theme]
+# High-contrast light theme with dark text
+base = "light"
+primaryColor = "#0f4c5c"
+backgroundColor = "#f8f9fa"
+secondaryBackgroundColor = "#ffffff"
+textColor = "#1a1a1a"
+font = "sans serif"
+
+[runner]
+magicEnabled = true
+installTracer = false
+fixMatplotlib = true
+
+[client]
+showErrorDetails = true
+toolbarMode = "minimal"
