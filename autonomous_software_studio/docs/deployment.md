@@ -17,6 +17,10 @@ curl http://localhost:8000/healthz
 curl http://localhost:8000/readyz
 ```
 
+Database backend:
+- The orchestrator uses SQLite by default and writes to `/app/data/orchestrator.db`
+  (mounted from `./data` for persistence).
+
 ## Manual (Local) Deployment
 ```bash
 python -m src.orchestration.orchestrator --server --host 0.0.0.0 --port 8000

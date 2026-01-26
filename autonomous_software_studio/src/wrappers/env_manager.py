@@ -16,6 +16,8 @@ from typing import Any, ClassVar
 
 from dotenv import load_dotenv
 
+from src.config.agent_settings import AgentSettingsManager
+
 
 class ProfileNotFoundError(Exception):
     """Raised when a requested profile does not exist."""
@@ -47,15 +49,16 @@ class EnvironmentConfig:
     """
 
     profile_name: str
-    api_key: str
+    api_key: str | None
     config_dir: Path
     session_id: str = field(default_factory=lambda: str(uuid.uuid4())[:8])
+    require_api_key: bool = True
 
     def __post_init__(self) -> None:
         """Validate and normalize configuration after initialization."""
         if not self.profile_name:
             raise ConfigurationError("Profile name cannot be empty")
-        if not self.api_key:
+        if self.require_api_key and not self.api_key:
             raise InvalidAPIKeyError(
                 f"API key for profile '{self.profile_name}' is missing or empty"
             )
@@ -86,19 +89,19 @@ class EnvironmentManager:
 
     PROFILE_MAPPING: ClassVar[dict[str, dict[str, str]]] = {
         "pm": {
-            "key_var": "CLAUDE_API_KEY_PM",
+            "key_var": "ANTHROPIC_API_KEY_PM",
             "config_dir": "~/.claude/pm",
         },
         "arch": {
-            "key_var": "CLAUDE_API_KEY_ARCH",
+            "key_var": "ANTHROPIC_API_KEY_ARCH",
             "config_dir": "~/.claude/arch",
         },
         "eng": {
-            "key_var": "CLAUDE_API_KEY_ENG",
+            "key_var": "ANTHROPIC_API_KEY_ENG",
             "config_dir": "~/.claude/eng",
         },
         "qa": {
-            "key_var": "CLAUDE_API_KEY_QA",
+            "key_var": "ANTHROPIC_API_KEY_QA",
             "config_dir": "~/.claude/qa",
         },
     }
@@ -176,26 +179,36 @@ class EnvironmentManager:
         key_var = mapping["key_var"]
         config_dir_str = mapping["config_dir"]
 
-        # Get API key from environment
-        api_key = os.getenv(key_var, "")
+        settings_manager = AgentSettingsManager()
+        agent_settings = settings_manager.get_agent(profile_name)
+        auth_type = agent_settings.get("auth_type", "api_key")
 
-        # Also check for shared ANTHROPIC_API_KEY if profile-specific not set
-        if not api_key:
+        # Get API key from settings or environment
+        api_key = agent_settings.get("api_key", "") or ""
+        if not api_key and auth_type == "api_key":
+            api_key = os.getenv(key_var, "")
+        if not api_key and auth_type == "api_key":
+            legacy_key_var = f"CLAUDE_API_KEY_{profile_name.upper()}"
+            api_key = os.getenv(legacy_key_var, "")
+        if not api_key and auth_type == "api_key":
             api_key = os.getenv("ANTHROPIC_API_KEY", "")
 
-        if not api_key:
+        if auth_type == "api_key" and not api_key:
             raise InvalidAPIKeyError(
                 f"API key not found for profile '{profile_name}'. "
-                f"Please set the {key_var} or ANTHROPIC_API_KEY environment variable."
+                f"Please set the {key_var} or ANTHROPIC_API_KEY environment variable "
+                "or configure it in agent settings."
             )
 
         # Expand environment variables in config_dir
-        config_dir = self._expand_path(config_dir_str)
+        config_dir_override = agent_settings.get("claude_profile_dir", "")
+        config_dir = self._expand_path(config_dir_override or config_dir_str)
 
         config = EnvironmentConfig(
             profile_name=profile_name,
             api_key=api_key,
             config_dir=config_dir,
+            require_api_key=auth_type == "api_key",
         )
 
         # Cache the configuration
@@ -231,7 +244,8 @@ class EnvironmentManager:
         env_vars = os.environ.copy()
 
         # Inject profile-specific variables
-        env_vars["ANTHROPIC_API_KEY"] = config.api_key
+        if config.api_key:
+            env_vars["ANTHROPIC_API_KEY"] = config.api_key
         env_vars["CLAUDE_CONFIG_DIR"] = str(config.config_dir)
         env_vars["CLAUDE_PROFILE"] = config.profile_name
         env_vars["CLAUDE_SESSION_ID"] = config.session_id
@@ -239,7 +253,8 @@ class EnvironmentManager:
         # Ensure config directory exists
         config.config_dir.mkdir(parents=True, exist_ok=True)
 
-        return env_vars
+        settings_manager = AgentSettingsManager()
+        return settings_manager.apply_env_overrides(config.profile_name, env_vars)
 
     def ensure_config_dirs(self) -> dict[str, Path]:
         """Ensure all profile configuration directories exist.

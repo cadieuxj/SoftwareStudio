@@ -14,6 +14,7 @@ from typing import Iterable
 
 import streamlit as st
 
+from src.config.agent_settings import AgentSettingsManager, PROVIDERS
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
@@ -92,8 +93,11 @@ def inject_styles() -> None:
             font-family: "Space Grotesk", "Montserrat", "Trebuchet MS", sans-serif;
         }
 
-        .stApp, .stMarkdown, .stMarkdown p, .stTextInput label, .stTextArea label,
-        .stSelectbox label, .stExpanderHeader, .stCaption, .stMetricLabel,
+        .stApp, .stMarkdown, .stMarkdown p, .stMarkdown span, .stMarkdown li,
+        .stTextInput label, .stTextArea label, .stSelectbox label,
+        .stExpanderHeader, .stCaption, .stMetricLabel,
+        .stTabs [data-baseweb="tab"], .stTabs [data-baseweb="tab"] * ,
+        .stTable, .stDataFrame, .stDataFrame * ,
         .stSidebar .stMarkdown, .stSidebar .stCaption {
             color: var(--ink) !important;
         }
@@ -101,6 +105,18 @@ def inject_styles() -> None:
         .stTextInput input, .stTextArea textarea {
             color: var(--ink) !important;
             background-color: #ffffff !important;
+        }
+
+        .stMarkdown a {
+            color: #0f4c5c !important;
+        }
+
+        .stTabs [data-baseweb="tab"] {
+            background: rgba(255,255,255,0.85) !important;
+        }
+
+        .stTabs [aria-selected="true"] {
+            border-bottom: 3px solid var(--accent-2) !important;
         }
 
         .stButton > button {
@@ -509,6 +525,197 @@ def render_metrics_analytics(sessions: list[SessionRow]) -> None:
     )
 
 
+def _env_rows(env_overrides: dict[str, str]) -> list[dict[str, str]]:
+    return [{"key": k, "value": v} for k, v in env_overrides.items()]
+
+
+def _env_dict(rows: list[dict[str, str]]) -> dict[str, str]:
+    env: dict[str, str] = {}
+    for row in rows:
+        key = row.get("key", "").strip()
+        if key:
+            env[key] = row.get("value", "")
+    return env
+
+
+def render_agent_account_management() -> None:
+    """Render agent account and prompt management page."""
+    st.title("Agent Account Management")
+    st.caption("Manage API keys, provider/model, usage limits, and persona prompts.")
+
+    settings_manager = AgentSettingsManager()
+    agents = settings_manager.get_settings().get("agents", {})
+
+    tabs = st.tabs([name.upper() for name in agents.keys()])
+
+    for tab, profile in zip(tabs, agents.keys()):
+        with tab:
+            agent = settings_manager.get_agent(profile)
+
+            st.markdown("### Provider & Model")
+            provider_index = PROVIDERS.index(agent.get("provider")) if agent.get("provider") in PROVIDERS else 0
+            provider = st.selectbox(
+                "Provider",
+                PROVIDERS,
+                index=provider_index,
+                key=f"{profile}_provider",
+            )
+            model = st.text_input(
+                "Model",
+                value=agent.get("model", ""),
+                key=f"{profile}_model",
+            )
+
+            st.markdown("### Auth & Keys")
+            auth_type = st.selectbox(
+                "Auth Type",
+                ["api_key", "token", "none"],
+                index=["api_key", "token", "none"].index(agent.get("auth_type", "api_key")),
+                key=f"{profile}_auth_type",
+                help="Use token for claude-code account auth if API key is not applicable.",
+            )
+            api_key = st.text_input(
+                "API Key",
+                value=agent.get("api_key", ""),
+                key=f"{profile}_api_key",
+                type="password",
+            )
+            auth_token = st.text_input(
+                "Auth Token",
+                value=agent.get("auth_token", ""),
+                key=f"{profile}_auth_token",
+                type="password",
+            )
+            auth_env_var = st.text_input(
+                "Token Env Var Name",
+                value=agent.get("auth_env_var", "CLAUDE_CODE_TOKEN"),
+                key=f"{profile}_auth_env_var",
+                help="Set the environment variable name expected by claude-code for token auth.",
+            )
+            account_label = st.text_input(
+                "Account Label",
+                value=agent.get("account_label", ""),
+                key=f"{profile}_account_label",
+            )
+            claude_profile_dir = st.text_input(
+                "Claude Profile Dir (optional)",
+                value=agent.get("claude_profile_dir", ""),
+                key=f"{profile}_claude_profile_dir",
+            )
+
+            st.markdown("### Daily Usage")
+            usage_unit = st.selectbox(
+                "Usage Unit",
+                ["runs", "sessions", "minutes"],
+                index=["runs", "sessions", "minutes"].index(agent.get("usage_unit", "runs"))
+                if agent.get("usage_unit", "runs") in ["runs", "sessions", "minutes"]
+                else 0,
+                key=f"{profile}_usage_unit",
+            )
+            daily_limit = st.number_input(
+                f"Daily Limit ({usage_unit})",
+                min_value=0,
+                value=int(agent.get("daily_limit", 0)),
+                step=1,
+                key=f"{profile}_daily_limit",
+                help="0 means unlimited.",
+            )
+            hard_limit = st.toggle(
+                "Hard stop when limit reached",
+                value=bool(agent.get("hard_limit", False)),
+                key=f"{profile}_hard_limit",
+            )
+            st.write(f"Usage today: {agent.get('usage_today', 0)} {usage_unit}")
+            if st.button("Reset usage counter", key=f"{profile}_reset_usage"):
+                settings_manager.reset_usage(profile)
+                request_rerun()
+
+            st.markdown("### Custom Environment Variables")
+            env_overrides = agent.get("env_overrides", {})
+            env_rows = _env_rows(env_overrides)
+            edited_rows = st.data_editor(
+                env_rows,
+                num_rows="dynamic",
+                use_container_width=True,
+                key=f"{profile}_env_overrides",
+            )
+
+            st.markdown("### Persona Prompt")
+            active_path = settings_manager.get_prompt_path(profile)
+            st.caption(f"Active prompt: {active_path}")
+            prompt_content = settings_manager.read_prompt(profile)
+            prompt_note = st.text_input(
+                "Prompt version note (optional)",
+                key=f"{profile}_prompt_note",
+            )
+            edited_prompt = st.text_area(
+                "Edit prompt",
+                value=prompt_content,
+                height=350,
+                key=f"{profile}_prompt_editor",
+            )
+            prompt_cols = st.columns(2)
+            with prompt_cols[0]:
+                if st.button("Save new prompt version", key=f"{profile}_save_prompt"):
+                    settings_manager.save_prompt_version(profile, edited_prompt, prompt_note)
+                    st.success("Prompt version saved.")
+                    request_rerun()
+            with prompt_cols[1]:
+                if st.button("Use default prompt", key=f"{profile}_use_default_prompt"):
+                    settings_manager.use_default_prompt(profile)
+                    st.success("Default prompt restored.")
+                    request_rerun()
+
+            versions = settings_manager.list_prompt_versions(profile)
+            if versions:
+                st.markdown("#### Prompt History")
+                version_labels = [
+                    f"{v.created_at} | {Path(v.path).name} | {v.note}".strip()
+                    for v in versions
+                ]
+                selected = st.selectbox(
+                    "Select version to review",
+                    version_labels,
+                    key=f"{profile}_prompt_version_select",
+                )
+                selected_idx = version_labels.index(selected)
+                selected_version = versions[selected_idx]
+                try:
+                    content = Path(selected_version.path).read_text(encoding="utf-8")
+                except Exception:
+                    content = "[Unable to read prompt version]"
+                st.text_area(
+                    "Selected version (read-only)",
+                    value=content,
+                    height=250,
+                    key=f"{profile}_prompt_version_view",
+                )
+                if st.button("Revert to selected version", key=f"{profile}_prompt_revert"):
+                    settings_manager.set_active_prompt(profile, Path(selected_version.path))
+                    st.success("Prompt reverted.")
+                    request_rerun()
+
+            if st.button("Save agent settings", key=f"{profile}_save_settings"):
+                settings_manager.update_agent(
+                    profile,
+                    {
+                        "provider": provider,
+                        "model": model,
+                        "auth_type": auth_type,
+                        "api_key": api_key,
+                        "auth_token": auth_token,
+                        "auth_env_var": auth_env_var,
+                        "account_label": account_label,
+                        "claude_profile_dir": claude_profile_dir,
+                        "daily_limit": int(daily_limit),
+                        "hard_limit": bool(hard_limit),
+                        "usage_unit": usage_unit,
+                        "env_overrides": _env_dict(edited_rows),
+                    },
+                )
+                st.success("Settings saved.")
+
+
 def main() -> None:
     """Run the Streamlit dashboard."""
     st.set_page_config(page_title="Autonomous Software Studio Control Panel", layout="wide")
@@ -532,6 +739,7 @@ def main() -> None:
             "Approval Interface",
             "Live Logs",
             "Metrics & Analytics",
+            "Agent Account Management",
         ],
         key="nav_page",
     )
@@ -546,6 +754,8 @@ def main() -> None:
         render_live_logs(orchestrator, sessions)
     elif page == "Metrics & Analytics":
         render_metrics_analytics(sessions)
+    elif page == "Agent Account Management":
+        render_agent_account_management()
 
 
 if __name__ == "__main__":

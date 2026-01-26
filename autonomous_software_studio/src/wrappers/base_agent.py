@@ -13,6 +13,7 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, ClassVar
 
+from src.config.agent_settings import AgentSettingsManager, UsageLimitError
 from src.wrappers.claude_wrapper import ClaudeCLIWrapper, ExecutionResult
 from src.wrappers.env_manager import EnvironmentManager
 from src.wrappers.state import AgentState, ExecutionMetrics
@@ -205,6 +206,14 @@ class BaseAgent(ABC):
             PromptLoadError: If prompt file cannot be loaded.
         """
         prompt_path = self.PERSONAS_DIR / f"{self.profile_name}_prompt.md"
+
+        try:
+            settings_manager = AgentSettingsManager()
+            override_path = settings_manager.get_prompt_path(self.profile_name)
+            if override_path and Path(override_path).exists():
+                prompt_path = Path(override_path)
+        except Exception as e:
+            self._logger.warning(f"Prompt override lookup failed: {e}")
 
         if not prompt_path.exists():
             self._logger.error(f"System prompt not found at: {prompt_path}")
@@ -416,6 +425,13 @@ class BaseAgent(ABC):
         self._logger.debug(f"Work directory: {work_dir}")
 
         start_time = time.time()
+        try:
+            settings_manager = AgentSettingsManager()
+            warning = settings_manager.check_and_record_usage(self.profile_name, units=1)
+            if warning:
+                self._logger.warning(warning)
+        except UsageLimitError as exc:
+            raise AgentError(str(exc)) from exc
         result = wrapper.execute_headless(prompt, work_dir, verbose)
         elapsed = time.time() - start_time
 

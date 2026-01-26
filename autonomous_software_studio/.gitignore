@@ -56,6 +56,9 @@ config/profiles/*/session_data/
 backups/
 data/orchestrator.db
 data/checkpoints.db
+data/agent_settings.json
+data/agent_settings.history/
+data/prompts/
 projects/
 
 # OS files

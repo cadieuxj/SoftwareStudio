@@ -15,6 +15,13 @@ Endpoints:
 streamlit run src/interfaces/dashboard.py
 ```
 
+## Agent Account Management
+Open the "Agent Account Management" page to:
+- Set API keys or token-based auth per agent.
+- Configure provider/model.
+- Enforce daily usage limits.
+- Edit persona prompts with version history and revert.
+
 ## Start a Session from the Dashboard
 1. Open the "Session Management" page.
 2. Expand "Start New Session".

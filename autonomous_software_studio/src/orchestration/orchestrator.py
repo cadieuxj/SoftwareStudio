@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import sqlite3
 import threading
 import uuid
@@ -83,7 +84,11 @@ class OrchestratorConfig:
         use_sqlite_checkpointer: Whether to use SQLite for checkpointing.
     """
 
-    db_path: Path = field(default_factory=lambda: Path("data/orchestrator.db"))
+    db_path: Path = field(
+        default_factory=lambda: Path(
+            os.getenv("ORCHESTRATOR_DB_PATH", "data/orchestrator.db")
+        )
+    )
     max_iterations: int = 5
     session_ttl_days: int = 7
     work_dir_base: Path = field(default_factory=lambda: Path("projects"))

@@ -8,6 +8,7 @@ Key variables:
 - `ANTHROPIC_API_KEY_ARCH`
 - `ANTHROPIC_API_KEY_ENG`
 - `ANTHROPIC_API_KEY_QA`
+- `ORCHESTRATOR_DB_PATH` (optional override for SQLite path)
 
 ## YAML Configs
 Environment-specific config files live in `config/`:
@@ -19,6 +20,14 @@ Validate configs with:
 ```bash
 python -m src.config.validator --check-all
 ```
+
+## Agent Settings
+Agent account settings and prompt versions are stored in:
+- `data/agent_settings.json`
+- `data/agent_settings.history/`
+- `data/prompts/<agent>/`
+
+These files are managed via the dashboard "Agent Account Management" page.
 
 ## MCP Servers
 MCP server definitions are stored in `config/mcp_servers.json`. See
