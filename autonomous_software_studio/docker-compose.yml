@@ -1,43 +1,235 @@
+# =============================================================================
+# Autonomous Software Studio - Production Docker Compose
+# Full stack deployment with PostgreSQL database and Redis caching
+# =============================================================================
+
 services:
+  # ===========================================================================
+  # PostgreSQL Database
+  # ===========================================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: ass_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-softwarestudio}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-securestudiopass}
+      POSTGRES_DB: ${POSTGRES_DB:-softwarestudio}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-softwarestudio} -d ${POSTGRES_DB:-softwarestudio}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - studio_network
+
+  # ===========================================================================
+  # Redis Cache
+  # ===========================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: ass_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - studio_network
+
+  # ===========================================================================
+  # Orchestrator Service - Main API and agent orchestration
+  # ===========================================================================
   orchestrator:
     build:
       context: .
       dockerfile: Dockerfile
+    container_name: ass_orchestrator
+    restart: unless-stopped
     env_file:
       - .env
+    environment:
+      # Database configuration
+      DATABASE_TYPE: postgresql
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_NAME: ${POSTGRES_DB:-softwarestudio}
+      DATABASE_USER: ${POSTGRES_USER:-softwarestudio}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-securestudiopass}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-softwarestudio}:${POSTGRES_PASSWORD:-securestudiopass}@postgres:5432/${POSTGRES_DB:-softwarestudio}
+      # Redis configuration
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_URL: redis://redis:6379/0
+      # Anthropic API Keys for agents
+      ANTHROPIC_API_KEY_PM: ${ANTHROPIC_API_KEY_PM:-}
+      ANTHROPIC_API_KEY_ARCH: ${ANTHROPIC_API_KEY_ARCH:-}
+      ANTHROPIC_API_KEY_ENG: ${ANTHROPIC_API_KEY_ENG:-}
+      ANTHROPIC_API_KEY_QA: ${ANTHROPIC_API_KEY_QA:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      # Application settings
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      DEBUG_MODE: ${DEBUG_MODE:-false}
+      MAX_SESSIONS: ${MAX_SESSIONS:-100}
+      SESSION_TIMEOUT: ${SESSION_TIMEOUT:-3600}
     volumes:
       - ./data:/app/data
       - ./logs:/app/logs
       - ./docs:/app/docs
       - ./reports:/app/reports
       - ./projects:/app/projects
-    environment:
-      - ANTHROPIC_API_KEY_PM=${ANTHROPIC_API_KEY_PM}
-      - ANTHROPIC_API_KEY_ARCH=${ANTHROPIC_API_KEY_ARCH}
-      - ANTHROPIC_API_KEY_ENG=${ANTHROPIC_API_KEY_ENG}
-      - ANTHROPIC_API_KEY_QA=${ANTHROPIC_API_KEY_QA}
     ports:
-      - "8000:8000"
+      - "${ORCHESTRATOR_PORT:-8000}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/healthz"]
       interval: 30s
-      timeout: 5s
+      timeout: 10s
       retries: 3
+      start_period: 30s
+    networks:
+      - studio_network
 
+  # ===========================================================================
+  # Dashboard Service - Streamlit UI with high-contrast theme
+  # ===========================================================================
   dashboard:
     build:
       context: .
       dockerfile: Dockerfile.dashboard
+    container_name: ass_dashboard
+    restart: unless-stopped
     env_file:
       - .env
+    environment:
+      # Database configuration (for read-only access)
+      DATABASE_TYPE: postgresql
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_NAME: ${POSTGRES_DB:-softwarestudio}
+      DATABASE_USER: ${POSTGRES_USER:-softwarestudio}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-securestudiopass}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-softwarestudio}:${POSTGRES_PASSWORD:-securestudiopass}@postgres:5432/${POSTGRES_DB:-softwarestudio}
+      # Redis configuration
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_URL: redis://redis:6379/0
+      # Orchestrator API endpoint
+      ORCHESTRATOR_URL: http://orchestrator:8000
+      # Streamlit theme configuration for high contrast
+      STREAMLIT_THEME_BASE: light
+      STREAMLIT_THEME_PRIMARY_COLOR: "#0f4c5c"
+      STREAMLIT_THEME_BACKGROUND_COLOR: "#f8f9fa"
+      STREAMLIT_THEME_SECONDARY_BACKGROUND_COLOR: "#ffffff"
+      STREAMLIT_THEME_TEXT_COLOR: "#1a1a1a"
     volumes:
-      - ./data:/app/data
-      - ./logs:/app/logs
-      - ./docs:/app/docs
-      - ./reports:/app/reports
-      - ./projects:/app/projects
+      - ./data:/app/data:ro
+      - ./logs:/app/logs:ro
+      - ./docs:/app/docs:ro
+      - ./reports:/app/reports:ro
+      - ./projects:/app/projects:ro
     ports:
-      - "8501:8501"
+      - "${DASHBOARD_PORT:-8501}:8501"
     depends_on:
       orchestrator:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    networks:
+      - studio_network
+
+  # ===========================================================================
+  # Prometheus - Metrics collection (optional)
+  # ===========================================================================
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: ass_prometheus
+    restart: unless-stopped
+    profiles:
+      - monitoring
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.enable-lifecycle'
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - studio_network
+
+  # ===========================================================================
+  # Grafana - Metrics visualization (optional)
+  # ===========================================================================
+  grafana:
+    image: grafana/grafana:latest
+    container_name: ass_grafana
+    restart: unless-stopped
+    profiles:
+      - monitoring
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./config/grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    depends_on:
+      - prometheus
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - studio_network
+
+# =============================================================================
+# Networks
+# =============================================================================
+networks:
+  studio_network:
+    driver: bridge
+    name: autonomous_software_studio_network
+
+# =============================================================================
+# Volumes for persistent data
+# =============================================================================
+volumes:
+  postgres_data:
+    name: ass_postgres_data
+  redis_data:
+    name: ass_redis_data
+  prometheus_data:
+    name: ass_prometheus_data
+  grafana_data:
+    name: ass_grafana_data

@@ -70,122 +70,405 @@ def get_orchestrator() -> Orchestrator:
 
 
 def inject_styles() -> None:
-    """Inject custom CSS for a distinctive control-panel feel."""
+    """Inject custom CSS for a distinctive control-panel feel with high contrast."""
     st.markdown(
         """
         <style>
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&family=Space+Grotesk:wght@400;600&display=swap');
 
         :root {
-            --ink: #1b1b1d;
-            --muted: #5f646b;
+            --ink: #1a1a1a;
+            --ink-secondary: #2d2d2d;
+            --muted: #4a4a4a;
             --accent: #0f4c5c;
-            --accent-2: #e09f3e;
-            --surface: rgba(255, 255, 255, 0.82);
-            --surface-strong: rgba(255, 255, 255, 0.95);
-            --border: rgba(15, 76, 92, 0.2);
+            --accent-2: #c77d1e;
+            --surface: rgba(255, 255, 255, 0.95);
+            --surface-strong: rgba(255, 255, 255, 0.98);
+            --border: rgba(15, 76, 92, 0.25);
+            --bg-light: #f8f9fa;
         }
 
+        /* Main app container */
         .stApp {
-            background: radial-gradient(circle at top left, rgba(224,159,62,0.15), transparent 35%),
-                        linear-gradient(145deg, #f7f1e1 0%, #eef4f6 45%, #f7fafc 100%);
-            color: var(--ink);
+            background: linear-gradient(145deg, #f5f5f5 0%, #e8eef0 45%, #f0f4f6 100%) !important;
+            color: var(--ink) !important;
             font-family: "Space Grotesk", "Montserrat", "Trebuchet MS", sans-serif;
         }
 
-        .stApp, .stMarkdown, .stMarkdown p, .stMarkdown span, .stMarkdown li,
-        .stTextInput label, .stTextArea label, .stSelectbox label,
-        .stExpanderHeader, .stCaption, .stMetricLabel,
-        .stTabs [data-baseweb="tab"], .stTabs [data-baseweb="tab"] * ,
-        .stTable, .stDataFrame, .stDataFrame * ,
-        .stSidebar .stMarkdown, .stSidebar .stCaption {
+        /* GLOBAL TEXT COLOR RESET - Force dark text everywhere */
+        .stApp *,
+        .stApp *::before,
+        .stApp *::after {
             color: var(--ink) !important;
         }
 
-        .stTextInput input, .stTextArea textarea {
+        /* Sidebar styling */
+        [data-testid="stSidebar"],
+        [data-testid="stSidebar"] * {
             color: var(--ink) !important;
+        }
+
+        [data-testid="stSidebar"] {
+            background-color: var(--surface-strong) !important;
+        }
+
+        [data-testid="stSidebar"] .stMarkdown,
+        [data-testid="stSidebar"] .stCaption,
+        [data-testid="stSidebar"] label,
+        [data-testid="stSidebar"] span,
+        [data-testid="stSidebar"] p {
+            color: var(--ink) !important;
+        }
+
+        /* Radio buttons in sidebar */
+        [data-testid="stSidebar"] [data-baseweb="radio"] label,
+        [data-testid="stSidebar"] [role="radiogroup"] label {
+            color: var(--ink) !important;
+        }
+
+        /* All text elements */
+        h1, h2, h3, h4, h5, h6,
+        p, span, div, label, li, td, th,
+        .stMarkdown, .stMarkdown p, .stMarkdown span, .stMarkdown li, .stMarkdown h1, .stMarkdown h2, .stMarkdown h3,
+        .stTextInput label, .stTextArea label, .stSelectbox label, .stNumberInput label,
+        .stRadio label, .stCheckbox label, .stMultiSelect label,
+        .stExpanderHeader, .stCaption,
+        [data-testid="stMarkdownContainer"],
+        [data-testid="stMarkdownContainer"] * {
+            color: var(--ink) !important;
+        }
+
+        /* Metric components - CRITICAL for visibility */
+        [data-testid="stMetric"],
+        [data-testid="stMetric"] *,
+        [data-testid="stMetricLabel"],
+        [data-testid="stMetricLabel"] *,
+        [data-testid="stMetricValue"],
+        [data-testid="stMetricValue"] *,
+        [data-testid="stMetricDelta"],
+        [data-testid="stMetricDelta"] *,
+        .stMetric, .stMetric *,
+        .stMetricLabel, .stMetricLabel *,
+        .stMetricValue, .stMetricValue * {
+            color: var(--ink) !important;
+        }
+
+        /* Force metric value to be very dark and visible */
+        [data-testid="stMetricValue"] {
+            color: #000000 !important;
+            font-weight: 700 !important;
+        }
+
+        [data-testid="stMetricLabel"] {
+            color: var(--muted) !important;
+            font-weight: 600 !important;
+        }
+
+        /* Input fields */
+        .stTextInput input, .stTextArea textarea, .stSelectbox select,
+        [data-baseweb="input"] input,
+        [data-baseweb="textarea"] textarea {
+            color: var(--ink) !important;
+            background-color: #ffffff !important;
+            border: 1px solid var(--border) !important;
+        }
+
+        .stTextInput input::placeholder, .stTextArea textarea::placeholder {
+            color: var(--muted) !important;
+        }
+
+        /* Select boxes and dropdowns */
+        [data-baseweb="select"] *,
+        [data-baseweb="popover"] *,
+        .stSelectbox *,
+        [data-testid="stSelectbox"] * {
+            color: var(--ink) !important;
+        }
+
+        [data-baseweb="select"] {
             background-color: #ffffff !important;
         }
 
-        .stMarkdown a {
-            color: #0f4c5c !important;
+        /* Links */
+        .stMarkdown a, a {
+            color: var(--accent) !important;
+            text-decoration: underline !important;
+        }
+
+        .stMarkdown a:hover, a:hover {
+            color: var(--accent-2) !important;
+        }
+
+        /* Tabs */
+        .stTabs [data-baseweb="tab-list"] {
+            background-color: var(--surface) !important;
+            gap: 4px;
         }
 
         .stTabs [data-baseweb="tab"] {
-            background: rgba(255,255,255,0.85) !important;
+            background: var(--surface-strong) !important;
+            color: var(--ink) !important;
+            border-radius: 8px 8px 0 0;
+        }
+
+        .stTabs [data-baseweb="tab"]:hover {
+            background: #e8eef0 !important;
         }
 
         .stTabs [aria-selected="true"] {
+            background: #ffffff !important;
             border-bottom: 3px solid var(--accent-2) !important;
+            color: var(--ink) !important;
+            font-weight: 600 !important;
         }
 
+        .stTabs [data-baseweb="tab-panel"],
+        .stTabs [data-baseweb="tab-panel"] * {
+            color: var(--ink) !important;
+        }
+
+        /* Buttons */
         .stButton > button {
-            background: var(--accent);
-            color: #ffffff;
-            border: none;
-            border-radius: 999px;
+            background: var(--accent) !important;
+            color: #ffffff !important;
+            border: none !important;
+            border-radius: 8px !important;
+            font-weight: 600 !important;
+            padding: 0.5rem 1.5rem !important;
+            transition: all 0.2s ease !important;
+        }
+
+        .stButton > button:hover {
+            background: #0a3640 !important;
+            color: #ffffff !important;
         }
 
         .stButton > button:disabled {
-            background: #9db2b8;
-            color: #f2f2f2;
+            background: #9ca3af !important;
+            color: #e5e7eb !important;
         }
 
+        /* Toggle/switch */
+        [data-testid="stToggle"] label,
+        .stToggle label {
+            color: var(--ink) !important;
+        }
+
+        /* Expanders */
+        [data-testid="stExpander"],
+        .stExpander {
+            background-color: var(--surface) !important;
+            border: 1px solid var(--border) !important;
+            border-radius: 12px !important;
+        }
+
+        [data-testid="stExpander"] summary,
+        [data-testid="stExpander"] summary *,
+        .stExpander summary,
+        .stExpander summary *,
+        .streamlit-expanderHeader,
+        .streamlit-expanderHeader * {
+            color: var(--ink) !important;
+            font-weight: 600 !important;
+        }
+
+        [data-testid="stExpander"] [data-testid="stMarkdownContainer"],
+        [data-testid="stExpander"] [data-testid="stMarkdownContainer"] * {
+            color: var(--ink) !important;
+        }
+
+        /* Tables and DataFrames */
+        .stTable, .stTable *,
+        .stDataFrame, .stDataFrame *,
+        [data-testid="stTable"], [data-testid="stTable"] *,
+        table, table * {
+            color: var(--ink) !important;
+        }
+
+        table {
+            background-color: var(--surface-strong) !important;
+        }
+
+        table th {
+            background-color: var(--accent) !important;
+            color: #ffffff !important;
+            font-weight: 600 !important;
+        }
+
+        table td {
+            background-color: #ffffff !important;
+            color: var(--ink) !important;
+            border-bottom: 1px solid var(--border) !important;
+        }
+
+        table tr:hover td {
+            background-color: #f0f4f6 !important;
+        }
+
+        /* Data editor */
+        [data-testid="stDataEditor"],
+        [data-testid="stDataEditor"] * {
+            color: var(--ink) !important;
+        }
+
+        /* Code blocks */
+        .stCode, .stCodeBlock,
+        [data-testid="stCode"],
+        pre, code {
+            background-color: #1e1e1e !important;
+            color: #d4d4d4 !important;
+            border-radius: 8px !important;
+        }
+
+        .stCode *, .stCodeBlock *,
+        pre *, code * {
+            color: #d4d4d4 !important;
+        }
+
+        /* Info, warning, error, success messages */
+        .stAlert, [data-testid="stAlert"],
+        .stInfo, .stWarning, .stError, .stSuccess {
+            border-radius: 8px !important;
+        }
+
+        .stAlert *, [data-testid="stAlert"] * {
+            color: var(--ink) !important;
+        }
+
+        [data-testid="stAlert"][data-baseweb="notification"] {
+            background-color: var(--surface) !important;
+        }
+
+        /* Progress bar */
+        .stProgress > div > div {
+            background-color: var(--accent) !important;
+        }
+
+        .stProgress {
+            background-color: #e0e0e0 !important;
+        }
+
+        /* Block container */
         .block-container {
             padding-top: 2.5rem;
+            max-width: 1200px;
         }
 
+        /* Panel title class */
         .panel-title {
             letter-spacing: 0.04em;
             text-transform: uppercase;
-            font-size: 0.8rem;
-            color: var(--muted);
+            font-size: 0.85rem;
+            color: var(--muted) !important;
+            font-weight: 600;
         }
 
+        /* Kanban cards - ENHANCED CONTRAST */
         .kanban-card {
-            border-radius: 14px;
-            padding: 12px 14px;
+            border-radius: 12px;
+            padding: 14px 16px;
             border: 1px solid var(--border);
-            background: var(--surface);
-            box-shadow: 0 12px 30px rgba(15, 76, 92, 0.08);
+            background: #ffffff;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
             margin-bottom: 12px;
             animation: fadeUp 0.4s ease-out;
         }
 
         .kanban-card__title {
-            font-weight: 600;
+            font-weight: 700 !important;
             font-size: 0.95rem;
-            margin-bottom: 6px;
-            color: var(--ink);
+            margin-bottom: 8px;
+            color: #000000 !important;
         }
 
         .kanban-card__meta {
-            font-size: 0.8rem;
-            color: var(--muted);
+            font-size: 0.85rem;
+            color: #4a4a4a !important;
+            line-height: 1.4;
         }
 
+        /* Kanban column */
         .kanban-column {
-            background: var(--surface-strong);
-            border-radius: 16px;
-            padding: 12px;
+            background: #ffffff;
+            border-radius: 14px;
+            padding: 14px;
             border: 1px solid var(--border);
-            min-height: 140px;
-            box-shadow: 0 10px 24px rgba(15, 76, 92, 0.08);
+            min-height: 160px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
         }
 
+        /* Status pill */
         .status-pill {
             display: inline-block;
-            padding: 2px 10px;
+            padding: 4px 12px;
             border-radius: 999px;
-            background: rgba(15, 76, 92, 0.1);
-            color: var(--accent);
+            background: var(--accent);
+            color: #ffffff !important;
             font-size: 0.75rem;
-            margin-bottom: 8px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Title styling */
+        .stTitle, [data-testid="stTitle"],
+        h1 {
+            color: var(--ink) !important;
+            font-weight: 700 !important;
+        }
+
+        /* Spinner/loading */
+        .stSpinner > div {
+            border-top-color: var(--accent) !important;
+        }
+
+        /* Tooltip */
+        [data-testid="stTooltipIcon"] {
+            color: var(--muted) !important;
+        }
+
+        /* Caption */
+        .stCaption, [data-testid="stCaption"] {
+            color: var(--muted) !important;
+        }
+
+        /* File uploader */
+        [data-testid="stFileUploader"],
+        [data-testid="stFileUploader"] * {
+            color: var(--ink) !important;
+        }
+
+        /* Number input */
+        .stNumberInput input {
+            color: var(--ink) !important;
+            background-color: #ffffff !important;
+        }
+
+        /* JSON viewer */
+        .stJson, [data-testid="stJson"] {
+            background-color: #1e1e1e !important;
+        }
+
+        .stJson *, [data-testid="stJson"] * {
+            color: #d4d4d4 !important;
+        }
+
+        /* Balloons animation override */
+        .stBalloons {
+            z-index: 9999;
         }
 
         @keyframes fadeUp {
-            from { opacity: 0; transform: translateY(6px); }
+            from { opacity: 0; transform: translateY(8px); }
             to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Ensure dark mode overrides don't affect our theme */
+        @media (prefers-color-scheme: dark) {
+            .stApp, .stApp * {
+                color: var(--ink) !important;
+            }
         }
         </style>
         """,
