@@ -13,7 +13,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# Install system dependencies including PostgreSQL client libraries
+# Install system dependencies including PostgreSQL client libraries and Node.js
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     curl \
@@ -21,6 +21,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     libpq-dev \
     gcc \
+    gnupg \
+    && mkdir -p /etc/apt/keyrings \
+    && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg \
+    && echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list \
+    && apt-get update \
+    && apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
@@ -42,12 +48,22 @@ RUN pip install --prefix=/install --no-cache-dir -r requirements.txt
 # =============================================================================
 FROM base AS runtime
 
-# Install claude-code CLI for the appuser
-RUN su - appuser -c "curl -fsSL https://claude.ai/install.sh | bash" || true
-RUN su - appuser -c "test -x /home/appuser/.local/bin/claude || test -x /home/appuser/.local/bin/claude-code || echo 'Claude CLI optional'"
-
 # Copy installed Python packages from builder
 COPY --from=builder /install /usr/local
+
+# Install Claude Code CLI globally via npm
+RUN npm install -g @anthropic-ai/claude-code || true
+
+# Install Claude CLI for the appuser (alternative installation method)
+USER appuser
+RUN mkdir -p /home/appuser/.local/bin \
+    && curl -fsSL https://claude.ai/install.sh | bash 2>/dev/null || true \
+    && curl -fsSL https://www.anthropic.com/claude-code/install.sh | bash 2>/dev/null || true
+
+# Verify installation (don't fail if not installed)
+RUN which claude || which claude-code || echo "Claude CLI will be configured at runtime"
+
+USER root
 
 # Copy application code
 COPY --chown=appuser:appuser src/ ./src/
@@ -63,8 +79,9 @@ RUN mkdir -p /app/data /app/logs /app/reports /app/projects \
 USER appuser
 
 # Set environment variables
-ENV PATH="/home/appuser/.local/bin:${PATH}" \
+ENV PATH="/home/appuser/.local/bin:/usr/local/bin:${PATH}" \
     PYTHONPATH=/app \
+    NODE_PATH=/usr/lib/node_modules \
     # Application defaults
     LOG_LEVEL=INFO \
     DEBUG_MODE=false \
