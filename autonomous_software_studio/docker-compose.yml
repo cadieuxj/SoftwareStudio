@@ -133,18 +133,21 @@ services:
       REDIS_URL: redis://redis:6379/0
       # Orchestrator API endpoint
       ORCHESTRATOR_URL: http://orchestrator:8000
-      # Streamlit theme configuration for high contrast
-      STREAMLIT_THEME_BASE: light
-      STREAMLIT_THEME_PRIMARY_COLOR: "#0f4c5c"
-      STREAMLIT_THEME_BACKGROUND_COLOR: "#f8f9fa"
-      STREAMLIT_THEME_SECONDARY_BACKGROUND_COLOR: "#ffffff"
-      STREAMLIT_THEME_TEXT_COLOR: "#1a1a1a"
+      # GitHub integration
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      GITHUB_DEFAULT_ORG: ${GITHUB_DEFAULT_ORG:-}
+      # Streamlit theme configuration for futuristic UI
+      STREAMLIT_THEME_BASE: dark
+      STREAMLIT_THEME_PRIMARY_COLOR: "#00f0ff"
+      STREAMLIT_THEME_BACKGROUND_COLOR: "#0a0a0f"
+      STREAMLIT_THEME_SECONDARY_BACKGROUND_COLOR: "#12121a"
+      STREAMLIT_THEME_TEXT_COLOR: "#e0e0e0"
     volumes:
-      - ./data:/app/data:ro
+      - ./data:/app/data
       - ./logs:/app/logs:ro
       - ./docs:/app/docs:ro
       - ./reports:/app/reports:ro
-      - ./projects:/app/projects:ro
+      - ./projects:/app/projects
     ports:
       - "${DASHBOARD_PORT:-8501}:8501"
     depends_on:

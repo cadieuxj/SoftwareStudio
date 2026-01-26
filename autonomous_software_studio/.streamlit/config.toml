@@ -1,6 +1,6 @@
 # =============================================================================
-# Streamlit Configuration - Autonomous Software Studio Dashboard
-# High-contrast theme for better readability
+# Streamlit Configuration - Autonomous Software Studio 2055+ Edition
+# Futuristic cyberpunk dark theme
 # =============================================================================
 
 [global]
@@ -20,12 +20,12 @@ gatherUsageStats = false
 serverAddress = "0.0.0.0"
 
 [theme]
-# High-contrast light theme with dark text
-base = "light"
-primaryColor = "#0f4c5c"
-backgroundColor = "#f8f9fa"
-secondaryBackgroundColor = "#ffffff"
-textColor = "#1a1a1a"
+# Futuristic dark theme with neon cyan accents
+base = "dark"
+primaryColor = "#00f0ff"
+backgroundColor = "#0a0a0f"
+secondaryBackgroundColor = "#12121a"
+textColor = "#e8e8f0"
 font = "sans serif"
 
 [runner]

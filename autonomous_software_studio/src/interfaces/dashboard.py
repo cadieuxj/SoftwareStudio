@@ -1,13 +1,15 @@
-"""Streamlit dashboard for human-in-the-loop oversight."""
+"""Streamlit dashboard for human-in-the-loop oversight - 2055+ Edition."""
 
 from __future__ import annotations
 
 import html
+import json
 import os
 import shutil
+import subprocess
 import sys
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Iterable
@@ -15,6 +17,104 @@ from typing import Iterable
 import streamlit as st
 
 from src.config.agent_settings import AgentSettingsManager, PROVIDERS
+
+
+# GitHub integration helpers
+def get_github_token() -> str | None:
+    """Get GitHub token from environment."""
+    return os.getenv("GITHUB_TOKEN") or os.getenv("GH_TOKEN")
+
+
+def run_gh_command(args: list[str], capture_output: bool = True) -> subprocess.CompletedProcess | None:
+    """Run a GitHub CLI command safely."""
+    try:
+        result = subprocess.run(
+            ["gh"] + args,
+            capture_output=capture_output,
+            text=True,
+            timeout=30,
+            env={**os.environ, "GH_TOKEN": get_github_token() or ""},
+        )
+        return result
+    except (subprocess.TimeoutExpired, FileNotFoundError, Exception):
+        return None
+
+
+def check_gh_auth() -> bool:
+    """Check if GitHub CLI is authenticated."""
+    result = run_gh_command(["auth", "status"])
+    return result is not None and result.returncode == 0
+
+
+def list_github_repos(org: str | None = None, limit: int = 30) -> list[dict]:
+    """List GitHub repositories."""
+    args = ["repo", "list", "--json", "name,description,url,isPrivate,updatedAt"]
+    if org:
+        args.insert(2, org)
+    args.extend(["--limit", str(limit)])
+    result = run_gh_command(args)
+    if result and result.returncode == 0:
+        try:
+            return json.loads(result.stdout)
+        except json.JSONDecodeError:
+            return []
+    return []
+
+
+def get_repo_info(repo: str) -> dict | None:
+    """Get detailed information about a repository."""
+    result = run_gh_command([
+        "repo", "view", repo, "--json",
+        "name,description,url,defaultBranchRef,isPrivate,languages,issues,pullRequests"
+    ])
+    if result and result.returncode == 0:
+        try:
+            return json.loads(result.stdout)
+        except json.JSONDecodeError:
+            return None
+    return None
+
+
+def list_repo_issues(repo: str, state: str = "open", limit: int = 20) -> list[dict]:
+    """List issues for a repository."""
+    result = run_gh_command([
+        "issue", "list", "-R", repo, "--state", state,
+        "--json", "number,title,state,author,createdAt,labels",
+        "--limit", str(limit)
+    ])
+    if result and result.returncode == 0:
+        try:
+            return json.loads(result.stdout)
+        except json.JSONDecodeError:
+            return []
+    return []
+
+
+def list_repo_prs(repo: str, state: str = "open", limit: int = 20) -> list[dict]:
+    """List pull requests for a repository."""
+    result = run_gh_command([
+        "pr", "list", "-R", repo, "--state", state,
+        "--json", "number,title,state,author,createdAt,headRefName",
+        "--limit", str(limit)
+    ])
+    if result and result.returncode == 0:
+        try:
+            return json.loads(result.stdout)
+        except json.JSONDecodeError:
+            return []
+    return []
+
+
+@dataclass
+class ProjectConfig:
+    """Configuration for a project."""
+    name: str
+    github_repo: str | None = None
+    work_dir: str | None = None
+    default_agent: str = "eng"
+    auto_commit: bool = False
+    branch_prefix: str = "auto/"
+    custom_settings: dict = field(default_factory=dict)
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
@@ -70,405 +170,496 @@ def get_orchestrator() -> Orchestrator:
 
 
 def inject_styles() -> None:
-    """Inject custom CSS for a distinctive control-panel feel with high contrast."""
+    """Inject custom CSS for a futuristic 2055+ cyberpunk control panel."""
     st.markdown(
         """
         <style>
-        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&family=Space+Grotesk:wght@400;600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700&family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap');
 
         :root {
-            --ink: #1a1a1a;
-            --ink-secondary: #2d2d2d;
-            --muted: #4a4a4a;
-            --accent: #0f4c5c;
-            --accent-2: #c77d1e;
-            --surface: rgba(255, 255, 255, 0.95);
-            --surface-strong: rgba(255, 255, 255, 0.98);
-            --border: rgba(15, 76, 92, 0.25);
-            --bg-light: #f8f9fa;
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-tertiary: #1a1a25;
+            --bg-card: rgba(18, 18, 26, 0.95);
+            --text-primary: #e8e8f0;
+            --text-secondary: #a0a0b0;
+            --text-muted: #6a6a7a;
+            --neon-cyan: #00f0ff;
+            --neon-magenta: #ff00e5;
+            --neon-green: #00ff9d;
+            --neon-orange: #ff6b35;
+            --neon-purple: #9d00ff;
+            --border-glow: rgba(0, 240, 255, 0.3);
+            --border-subtle: rgba(255, 255, 255, 0.08);
+            --gradient-cyber: linear-gradient(135deg, var(--neon-cyan), var(--neon-magenta));
         }
 
-        /* Main app container */
+        /* Main app container - Dark futuristic background */
         .stApp {
-            background: linear-gradient(145deg, #f5f5f5 0%, #e8eef0 45%, #f0f4f6 100%) !important;
-            color: var(--ink) !important;
-            font-family: "Space Grotesk", "Montserrat", "Trebuchet MS", sans-serif;
+            background:
+                radial-gradient(ellipse at top left, rgba(0, 240, 255, 0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at bottom right, rgba(255, 0, 229, 0.06) 0%, transparent 50%),
+                radial-gradient(ellipse at center, rgba(157, 0, 255, 0.04) 0%, transparent 70%),
+                linear-gradient(180deg, var(--bg-primary) 0%, #0d0d15 50%, var(--bg-primary) 100%) !important;
+            color: var(--text-primary) !important;
+            font-family: "Rajdhani", "Share Tech Mono", sans-serif !important;
+            min-height: 100vh;
         }
 
-        /* GLOBAL TEXT COLOR RESET - Force dark text everywhere */
-        .stApp *,
-        .stApp *::before,
-        .stApp *::after {
-            color: var(--ink) !important;
+        /* Animated grid background overlay */
+        .stApp::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image:
+                linear-gradient(rgba(0, 240, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 240, 255, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            pointer-events: none;
+            z-index: 0;
         }
 
-        /* Sidebar styling */
-        [data-testid="stSidebar"],
-        [data-testid="stSidebar"] * {
-            color: var(--ink) !important;
+        /* GLOBAL TEXT COLOR - Light text on dark backgrounds */
+        .stApp *, .stApp *::before, .stApp *::after {
+            color: var(--text-primary) !important;
         }
 
+        /* Sidebar - Futuristic panel */
         [data-testid="stSidebar"] {
-            background-color: var(--surface-strong) !important;
+            background: linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-primary) 100%) !important;
+            border-right: 1px solid var(--border-glow) !important;
+            box-shadow: 4px 0 20px rgba(0, 240, 255, 0.1) !important;
         }
 
+        [data-testid="stSidebar"] *,
         [data-testid="stSidebar"] .stMarkdown,
-        [data-testid="stSidebar"] .stCaption,
         [data-testid="stSidebar"] label,
         [data-testid="stSidebar"] span,
         [data-testid="stSidebar"] p {
-            color: var(--ink) !important;
+            color: var(--text-primary) !important;
         }
 
-        /* Radio buttons in sidebar */
+        [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2 {
+            font-family: "Orbitron", sans-serif !important;
+            color: var(--neon-cyan) !important;
+            text-shadow: 0 0 10px rgba(0, 240, 255, 0.5) !important;
+        }
+
+        /* Radio buttons - Neon style */
         [data-testid="stSidebar"] [data-baseweb="radio"] label,
         [data-testid="stSidebar"] [role="radiogroup"] label {
-            color: var(--ink) !important;
+            color: var(--text-primary) !important;
+            transition: all 0.3s ease !important;
+        }
+
+        [data-testid="stSidebar"] [data-baseweb="radio"] label:hover {
+            color: var(--neon-cyan) !important;
+            text-shadow: 0 0 8px rgba(0, 240, 255, 0.6) !important;
+        }
+
+        /* All headings - Orbitron futuristic font */
+        h1, h2, h3 {
+            font-family: "Orbitron", sans-serif !important;
+            color: var(--neon-cyan) !important;
+            text-shadow: 0 0 15px rgba(0, 240, 255, 0.4) !important;
+            letter-spacing: 0.05em !important;
+        }
+
+        h4, h5, h6 {
+            font-family: "Rajdhani", sans-serif !important;
+            color: var(--text-primary) !important;
         }
 
         /* All text elements */
-        h1, h2, h3, h4, h5, h6,
         p, span, div, label, li, td, th,
-        .stMarkdown, .stMarkdown p, .stMarkdown span, .stMarkdown li, .stMarkdown h1, .stMarkdown h2, .stMarkdown h3,
-        .stTextInput label, .stTextArea label, .stSelectbox label, .stNumberInput label,
-        .stRadio label, .stCheckbox label, .stMultiSelect label,
+        .stMarkdown, .stMarkdown p, .stMarkdown span, .stMarkdown li,
+        .stTextInput label, .stTextArea label, .stSelectbox label,
         .stExpanderHeader, .stCaption,
         [data-testid="stMarkdownContainer"],
         [data-testid="stMarkdownContainer"] * {
-            color: var(--ink) !important;
+            color: var(--text-primary) !important;
         }
 
-        /* Metric components - CRITICAL for visibility */
+        /* Metric components - Neon glow */
         [data-testid="stMetric"],
         [data-testid="stMetric"] *,
-        [data-testid="stMetricLabel"],
-        [data-testid="stMetricLabel"] *,
-        [data-testid="stMetricValue"],
-        [data-testid="stMetricValue"] *,
-        [data-testid="stMetricDelta"],
-        [data-testid="stMetricDelta"] *,
-        .stMetric, .stMetric *,
-        .stMetricLabel, .stMetricLabel *,
-        .stMetricValue, .stMetricValue * {
-            color: var(--ink) !important;
+        .stMetric, .stMetric * {
+            color: var(--text-primary) !important;
         }
 
-        /* Force metric value to be very dark and visible */
         [data-testid="stMetricValue"] {
-            color: #000000 !important;
+            color: var(--neon-cyan) !important;
+            font-family: "Orbitron", sans-serif !important;
             font-weight: 700 !important;
+            font-size: 2rem !important;
+            text-shadow: 0 0 20px rgba(0, 240, 255, 0.6) !important;
         }
 
         [data-testid="stMetricLabel"] {
-            color: var(--muted) !important;
+            color: var(--text-secondary) !important;
+            font-family: "Rajdhani", sans-serif !important;
             font-weight: 600 !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.1em !important;
         }
 
-        /* Input fields */
+        [data-testid="stMetricDelta"] {
+            color: var(--neon-green) !important;
+        }
+
+        /* Input fields - Cyber style */
         .stTextInput input, .stTextArea textarea, .stSelectbox select,
         [data-baseweb="input"] input,
         [data-baseweb="textarea"] textarea {
-            color: var(--ink) !important;
-            background-color: #ffffff !important;
-            border: 1px solid var(--border) !important;
+            color: var(--text-primary) !important;
+            background: var(--bg-tertiary) !important;
+            border: 1px solid var(--border-glow) !important;
+            border-radius: 8px !important;
+            transition: all 0.3s ease !important;
+        }
+
+        .stTextInput input:focus, .stTextArea textarea:focus {
+            border-color: var(--neon-cyan) !important;
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.3), inset 0 0 10px rgba(0, 240, 255, 0.1) !important;
         }
 
         .stTextInput input::placeholder, .stTextArea textarea::placeholder {
-            color: var(--muted) !important;
+            color: var(--text-muted) !important;
         }
 
         /* Select boxes and dropdowns */
-        [data-baseweb="select"] *,
-        [data-baseweb="popover"] *,
-        .stSelectbox *,
-        [data-testid="stSelectbox"] * {
-            color: var(--ink) !important;
+        [data-baseweb="select"], [data-baseweb="select"] *,
+        [data-baseweb="popover"], [data-baseweb="popover"] *,
+        .stSelectbox *, [data-testid="stSelectbox"] * {
+            color: var(--text-primary) !important;
+            background: var(--bg-tertiary) !important;
         }
 
-        [data-baseweb="select"] {
-            background-color: #ffffff !important;
+        [data-baseweb="menu"] {
+            background: var(--bg-secondary) !important;
+            border: 1px solid var(--border-glow) !important;
         }
 
-        /* Links */
+        /* Links - Neon cyan */
         .stMarkdown a, a {
-            color: var(--accent) !important;
-            text-decoration: underline !important;
+            color: var(--neon-cyan) !important;
+            text-decoration: none !important;
+            transition: all 0.3s ease !important;
         }
 
         .stMarkdown a:hover, a:hover {
-            color: var(--accent-2) !important;
+            color: var(--neon-magenta) !important;
+            text-shadow: 0 0 10px rgba(255, 0, 229, 0.6) !important;
         }
 
-        /* Tabs */
+        /* Tabs - Futuristic */
         .stTabs [data-baseweb="tab-list"] {
-            background-color: var(--surface) !important;
+            background: var(--bg-secondary) !important;
+            border-bottom: 1px solid var(--border-glow) !important;
             gap: 4px;
         }
 
         .stTabs [data-baseweb="tab"] {
-            background: var(--surface-strong) !important;
-            color: var(--ink) !important;
-            border-radius: 8px 8px 0 0;
+            background: transparent !important;
+            color: var(--text-secondary) !important;
+            border-radius: 8px 8px 0 0 !important;
+            font-family: "Rajdhani", sans-serif !important;
+            font-weight: 600 !important;
+            transition: all 0.3s ease !important;
         }
 
         .stTabs [data-baseweb="tab"]:hover {
-            background: #e8eef0 !important;
+            color: var(--neon-cyan) !important;
+            background: rgba(0, 240, 255, 0.1) !important;
         }
 
         .stTabs [aria-selected="true"] {
-            background: #ffffff !important;
-            border-bottom: 3px solid var(--accent-2) !important;
-            color: var(--ink) !important;
-            font-weight: 600 !important;
+            background: rgba(0, 240, 255, 0.15) !important;
+            border-bottom: 3px solid var(--neon-cyan) !important;
+            color: var(--neon-cyan) !important;
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.3) !important;
         }
 
-        .stTabs [data-baseweb="tab-panel"],
-        .stTabs [data-baseweb="tab-panel"] * {
-            color: var(--ink) !important;
-        }
-
-        /* Buttons */
+        /* Buttons - Neon glow */
         .stButton > button {
-            background: var(--accent) !important;
-            color: #ffffff !important;
-            border: none !important;
+            background: linear-gradient(135deg, rgba(0, 240, 255, 0.2), rgba(157, 0, 255, 0.2)) !important;
+            color: var(--neon-cyan) !important;
+            border: 1px solid var(--neon-cyan) !important;
             border-radius: 8px !important;
-            font-weight: 600 !important;
-            padding: 0.5rem 1.5rem !important;
-            transition: all 0.2s ease !important;
+            font-family: "Rajdhani", sans-serif !important;
+            font-weight: 700 !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.1em !important;
+            padding: 0.6rem 1.8rem !important;
+            transition: all 0.3s ease !important;
+            box-shadow: 0 0 10px rgba(0, 240, 255, 0.2) !important;
         }
 
         .stButton > button:hover {
-            background: #0a3640 !important;
-            color: #ffffff !important;
+            background: linear-gradient(135deg, rgba(0, 240, 255, 0.4), rgba(157, 0, 255, 0.4)) !important;
+            box-shadow: 0 0 25px rgba(0, 240, 255, 0.5), inset 0 0 15px rgba(0, 240, 255, 0.2) !important;
+            transform: translateY(-2px) !important;
         }
 
         .stButton > button:disabled {
-            background: #9ca3af !important;
-            color: #e5e7eb !important;
+            background: rgba(100, 100, 120, 0.3) !important;
+            color: var(--text-muted) !important;
+            border-color: var(--text-muted) !important;
+            box-shadow: none !important;
         }
 
-        /* Toggle/switch */
-        [data-testid="stToggle"] label,
-        .stToggle label {
-            color: var(--ink) !important;
-        }
-
-        /* Expanders */
-        [data-testid="stExpander"],
-        .stExpander {
-            background-color: var(--surface) !important;
-            border: 1px solid var(--border) !important;
+        /* Expanders - Glass morphism */
+        [data-testid="stExpander"], .stExpander {
+            background: rgba(18, 18, 26, 0.8) !important;
+            backdrop-filter: blur(10px) !important;
+            border: 1px solid var(--border-glow) !important;
             border-radius: 12px !important;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
         }
 
         [data-testid="stExpander"] summary,
         [data-testid="stExpander"] summary *,
-        .stExpander summary,
-        .stExpander summary *,
-        .streamlit-expanderHeader,
-        .streamlit-expanderHeader * {
-            color: var(--ink) !important;
+        .streamlit-expanderHeader, .streamlit-expanderHeader * {
+            color: var(--text-primary) !important;
             font-weight: 600 !important;
         }
 
-        [data-testid="stExpander"] [data-testid="stMarkdownContainer"],
-        [data-testid="stExpander"] [data-testid="stMarkdownContainer"] * {
-            color: var(--ink) !important;
-        }
-
-        /* Tables and DataFrames */
-        .stTable, .stTable *,
-        .stDataFrame, .stDataFrame *,
+        /* Tables - Cyber grid */
+        .stTable, .stTable *, .stDataFrame, .stDataFrame *,
         [data-testid="stTable"], [data-testid="stTable"] *,
         table, table * {
-            color: var(--ink) !important;
+            color: var(--text-primary) !important;
         }
 
         table {
-            background-color: var(--surface-strong) !important;
+            background: var(--bg-card) !important;
+            border: 1px solid var(--border-glow) !important;
+            border-radius: 8px !important;
         }
 
         table th {
-            background-color: var(--accent) !important;
-            color: #ffffff !important;
-            font-weight: 600 !important;
+            background: linear-gradient(135deg, rgba(0, 240, 255, 0.2), rgba(157, 0, 255, 0.15)) !important;
+            color: var(--neon-cyan) !important;
+            font-weight: 700 !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.05em !important;
+            border-bottom: 1px solid var(--neon-cyan) !important;
         }
 
         table td {
-            background-color: #ffffff !important;
-            color: var(--ink) !important;
-            border-bottom: 1px solid var(--border) !important;
+            background: transparent !important;
+            color: var(--text-primary) !important;
+            border-bottom: 1px solid var(--border-subtle) !important;
         }
 
         table tr:hover td {
-            background-color: #f0f4f6 !important;
+            background: rgba(0, 240, 255, 0.05) !important;
         }
 
-        /* Data editor */
-        [data-testid="stDataEditor"],
-        [data-testid="stDataEditor"] * {
-            color: var(--ink) !important;
-        }
-
-        /* Code blocks */
-        .stCode, .stCodeBlock,
-        [data-testid="stCode"],
-        pre, code {
-            background-color: #1e1e1e !important;
-            color: #d4d4d4 !important;
+        /* Code blocks - Terminal style */
+        .stCode, .stCodeBlock, [data-testid="stCode"], pre, code {
+            background: linear-gradient(180deg, #0d0d15 0%, #0a0a0f 100%) !important;
+            border: 1px solid var(--border-glow) !important;
             border-radius: 8px !important;
+            font-family: "Share Tech Mono", monospace !important;
         }
 
-        .stCode *, .stCodeBlock *,
-        pre *, code * {
-            color: #d4d4d4 !important;
+        .stCode *, .stCodeBlock *, pre *, code * {
+            color: var(--neon-green) !important;
         }
 
-        /* Info, warning, error, success messages */
-        .stAlert, [data-testid="stAlert"],
-        .stInfo, .stWarning, .stError, .stSuccess {
-            border-radius: 8px !important;
-        }
-
-        .stAlert *, [data-testid="stAlert"] * {
-            color: var(--ink) !important;
-        }
-
-        [data-testid="stAlert"][data-baseweb="notification"] {
-            background-color: var(--surface) !important;
-        }
-
-        /* Progress bar */
+        /* Progress bar - Neon */
         .stProgress > div > div {
-            background-color: var(--accent) !important;
+            background: var(--gradient-cyber) !important;
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.5) !important;
         }
 
         .stProgress {
-            background-color: #e0e0e0 !important;
+            background: var(--bg-tertiary) !important;
+            border-radius: 10px !important;
         }
 
         /* Block container */
         .block-container {
             padding-top: 2.5rem;
-            max-width: 1200px;
+            max-width: 1400px;
         }
 
         /* Panel title class */
         .panel-title {
-            letter-spacing: 0.04em;
+            font-family: "Orbitron", sans-serif !important;
+            letter-spacing: 0.15em;
             text-transform: uppercase;
-            font-size: 0.85rem;
-            color: var(--muted) !important;
+            font-size: 0.75rem;
+            color: var(--neon-cyan) !important;
             font-weight: 600;
+            text-shadow: 0 0 8px rgba(0, 240, 255, 0.4);
         }
 
-        /* Kanban cards - ENHANCED CONTRAST */
+        /* Kanban cards - Holographic */
         .kanban-card {
             border-radius: 12px;
-            padding: 14px 16px;
-            border: 1px solid var(--border);
-            background: #ffffff;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            padding: 16px 18px;
+            border: 1px solid var(--border-glow);
+            background: linear-gradient(135deg, rgba(18, 18, 26, 0.95), rgba(26, 26, 37, 0.9));
+            backdrop-filter: blur(10px);
+            box-shadow:
+                0 4px 20px rgba(0, 0, 0, 0.4),
+                0 0 15px rgba(0, 240, 255, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
             margin-bottom: 12px;
-            animation: fadeUp 0.4s ease-out;
+            animation: fadeUp 0.4s ease-out, holoPulse 4s ease-in-out infinite;
+            transition: all 0.3s ease;
+        }
+
+        .kanban-card:hover {
+            border-color: var(--neon-cyan);
+            box-shadow:
+                0 8px 30px rgba(0, 0, 0, 0.5),
+                0 0 25px rgba(0, 240, 255, 0.25);
+            transform: translateY(-3px);
         }
 
         .kanban-card__title {
-            font-weight: 700 !important;
-            font-size: 0.95rem;
+            font-family: "Orbitron", sans-serif !important;
+            font-weight: 600 !important;
+            font-size: 0.9rem;
             margin-bottom: 8px;
-            color: #000000 !important;
+            color: var(--neon-cyan) !important;
+            text-shadow: 0 0 8px rgba(0, 240, 255, 0.4);
         }
 
         .kanban-card__meta {
             font-size: 0.85rem;
-            color: #4a4a4a !important;
-            line-height: 1.4;
+            color: var(--text-secondary) !important;
+            line-height: 1.5;
         }
 
         /* Kanban column */
         .kanban-column {
-            background: #ffffff;
-            border-radius: 14px;
-            padding: 14px;
-            border: 1px solid var(--border);
-            min-height: 160px;
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+            background: linear-gradient(180deg, rgba(18, 18, 26, 0.8), rgba(10, 10, 15, 0.9));
+            border-radius: 16px;
+            padding: 16px;
+            border: 1px solid var(--border-subtle);
+            min-height: 180px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
         }
 
-        /* Status pill */
+        /* Status pill - Glowing badges */
         .status-pill {
             display: inline-block;
-            padding: 4px 12px;
+            padding: 5px 14px;
             border-radius: 999px;
-            background: var(--accent);
-            color: #ffffff !important;
-            font-size: 0.75rem;
+            background: linear-gradient(135deg, rgba(0, 240, 255, 0.2), rgba(157, 0, 255, 0.2));
+            border: 1px solid var(--neon-cyan);
+            color: var(--neon-cyan) !important;
+            font-family: "Orbitron", sans-serif !important;
+            font-size: 0.7rem;
             font-weight: 600;
-            margin-bottom: 10px;
+            margin-bottom: 12px;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.1em;
+            box-shadow: 0 0 12px rgba(0, 240, 255, 0.3);
         }
 
-        /* Title styling */
-        .stTitle, [data-testid="stTitle"],
-        h1 {
-            color: var(--ink) !important;
-            font-weight: 700 !important;
+        /* GitHub connection badge */
+        .github-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, rgba(0, 255, 157, 0.15), rgba(0, 240, 255, 0.1));
+            border: 1px solid var(--neon-green);
+            color: var(--neon-green) !important;
+            font-family: "Share Tech Mono", monospace !important;
+            font-size: 0.85rem;
+            box-shadow: 0 0 15px rgba(0, 255, 157, 0.2);
         }
 
-        /* Spinner/loading */
+        /* Alerts - Styled notifications */
+        .stAlert, [data-testid="stAlert"] {
+            border-radius: 10px !important;
+            border-left: 4px solid var(--neon-cyan) !important;
+            background: rgba(0, 240, 255, 0.08) !important;
+        }
+
+        .stAlert *, [data-testid="stAlert"] * {
+            color: var(--text-primary) !important;
+        }
+
+        /* Spinner - Neon */
         .stSpinner > div {
-            border-top-color: var(--accent) !important;
-        }
-
-        /* Tooltip */
-        [data-testid="stTooltipIcon"] {
-            color: var(--muted) !important;
+            border-top-color: var(--neon-cyan) !important;
         }
 
         /* Caption */
         .stCaption, [data-testid="stCaption"] {
-            color: var(--muted) !important;
+            color: var(--text-muted) !important;
+            font-family: "Share Tech Mono", monospace !important;
+        }
+
+        /* Animations */
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes holoPulse {
+            0%, 100% { border-color: var(--border-glow); }
+            50% { border-color: rgba(0, 240, 255, 0.5); }
+        }
+
+        @keyframes neonFlicker {
+            0%, 100% { opacity: 1; }
+            92% { opacity: 1; }
+            93% { opacity: 0.8; }
+            94% { opacity: 1; }
+            96% { opacity: 0.9; }
+        }
+
+        /* Scrollbar - Cyber style */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-primary);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, var(--neon-cyan), var(--neon-purple));
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--neon-cyan);
+        }
+
+        /* Data editor */
+        [data-testid="stDataEditor"], [data-testid="stDataEditor"] * {
+            color: var(--text-primary) !important;
+            background: var(--bg-tertiary) !important;
+        }
+
+        /* Toggle */
+        [data-testid="stToggle"] label, .stToggle label {
+            color: var(--text-primary) !important;
         }
 
         /* File uploader */
-        [data-testid="stFileUploader"],
-        [data-testid="stFileUploader"] * {
-            color: var(--ink) !important;
+        [data-testid="stFileUploader"], [data-testid="stFileUploader"] * {
+            color: var(--text-primary) !important;
         }
 
         /* Number input */
         .stNumberInput input {
-            color: var(--ink) !important;
-            background-color: #ffffff !important;
-        }
-
-        /* JSON viewer */
-        .stJson, [data-testid="stJson"] {
-            background-color: #1e1e1e !important;
-        }
-
-        .stJson *, [data-testid="stJson"] * {
-            color: #d4d4d4 !important;
-        }
-
-        /* Balloons animation override */
-        .stBalloons {
-            z-index: 9999;
-        }
-
-        @keyframes fadeUp {
-            from { opacity: 0; transform: translateY(8px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        /* Ensure dark mode overrides don't affect our theme */
-        @media (prefers-color-scheme: dark) {
-            .stApp, .stApp * {
-                color: var(--ink) !important;
-            }
+            color: var(--text-primary) !important;
+            background: var(--bg-tertiary) !important;
         }
         </style>
         """,
@@ -999,9 +1190,290 @@ def render_agent_account_management() -> None:
                 st.success("Settings saved.")
 
 
+def render_github_integration() -> None:
+    """Render the GitHub integration page."""
+    st.title("GitHub Integration")
+    st.caption("Connect repositories, manage issues, and track pull requests.")
+
+    # Check GitHub authentication
+    gh_authenticated = check_gh_auth()
+    token_configured = bool(get_github_token())
+
+    # Status indicators
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        if gh_authenticated:
+            st.markdown(
+                "<div class='github-badge'>GitHub CLI: Connected</div>",
+                unsafe_allow_html=True
+            )
+        else:
+            st.warning("GitHub CLI not authenticated")
+    with col2:
+        if token_configured:
+            st.markdown(
+                "<div class='github-badge'>Token: Configured</div>",
+                unsafe_allow_html=True
+            )
+        else:
+            st.info("Set GITHUB_TOKEN in .env")
+    with col3:
+        default_org = os.getenv("GITHUB_DEFAULT_ORG", "")
+        if default_org:
+            st.markdown(
+                f"<div class='github-badge'>Org: {default_org}</div>",
+                unsafe_allow_html=True
+            )
+
+    st.divider()
+
+    # Repository connection
+    st.markdown("### Connect Repository")
+
+    with st.expander("Add Repository Connection", expanded=not gh_authenticated):
+        token_input = st.text_input(
+            "GitHub Token (PAT)",
+            type="password",
+            help="Personal Access Token with repo scope"
+        )
+        org_input = st.text_input(
+            "Organization/Username",
+            value=os.getenv("GITHUB_DEFAULT_ORG", ""),
+            help="Leave empty to list your personal repositories"
+        )
+
+        if st.button("Save GitHub Settings"):
+            if token_input:
+                st.info("Token configured. Add to .env file for persistence: GITHUB_TOKEN=your_token")
+                os.environ["GITHUB_TOKEN"] = token_input
+            if org_input:
+                os.environ["GITHUB_DEFAULT_ORG"] = org_input
+            st.success("Settings updated!")
+            request_rerun()
+
+    # List repositories
+    if gh_authenticated or token_configured:
+        st.markdown("### Your Repositories")
+
+        org = os.getenv("GITHUB_DEFAULT_ORG", "")
+        repos = list_github_repos(org if org else None, limit=50)
+
+        if repos:
+            # Repository filter
+            search = st.text_input("Search repositories", key="repo_search")
+            filtered_repos = [
+                r for r in repos
+                if not search or search.lower() in r.get("name", "").lower()
+            ]
+
+            # Display as cards
+            for repo in filtered_repos[:20]:
+                with st.container():
+                    col1, col2 = st.columns([3, 1])
+                    with col1:
+                        repo_name = repo.get("name", "Unknown")
+                        repo_desc = repo.get("description", "No description")
+                        is_private = repo.get("isPrivate", False)
+                        privacy_badge = "Private" if is_private else "Public"
+
+                        st.markdown(f"""
+                        <div class='kanban-card'>
+                            <div class='kanban-card__title'>{html.escape(repo_name)}</div>
+                            <div class='kanban-card__meta'>{html.escape(repo_desc or 'No description')}</div>
+                            <div class='status-pill'>{privacy_badge}</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+
+                    with col2:
+                        full_name = f"{org}/{repo_name}" if org else repo_name
+                        if st.button("View Details", key=f"view_{repo_name}"):
+                            st.session_state["selected_repo"] = full_name
+                            request_rerun()
+        else:
+            st.info("No repositories found. Check your token permissions.")
+
+        # Repository details view
+        selected_repo = st.session_state.get("selected_repo")
+        if selected_repo:
+            st.divider()
+            st.markdown(f"### Repository: {selected_repo}")
+
+            repo_info = get_repo_info(selected_repo)
+            if repo_info:
+                # Repo metrics
+                m1, m2, m3, m4 = st.columns(4)
+                issues = repo_info.get("issues", {})
+                prs = repo_info.get("pullRequests", {})
+                m1.metric("Open Issues", issues.get("totalCount", 0))
+                m2.metric("Open PRs", prs.get("totalCount", 0))
+                m3.metric("Default Branch", repo_info.get("defaultBranchRef", {}).get("name", "main"))
+                m4.metric("Languages", len(repo_info.get("languages", {}).get("nodes", [])))
+
+            # Tabs for issues and PRs
+            tab_issues, tab_prs, tab_actions = st.tabs(["Issues", "Pull Requests", "Actions"])
+
+            with tab_issues:
+                issues = list_repo_issues(selected_repo)
+                if issues:
+                    for issue in issues:
+                        with st.expander(f"#{issue['number']}: {issue['title']}"):
+                            st.write(f"State: {issue['state']}")
+                            st.write(f"Author: {issue['author']['login']}")
+                            st.write(f"Created: {issue['createdAt']}")
+                            labels = [l['name'] for l in issue.get('labels', [])]
+                            if labels:
+                                st.write(f"Labels: {', '.join(labels)}")
+
+                            if st.button(f"Create session from issue #{issue['number']}", key=f"issue_session_{issue['number']}"):
+                                st.session_state["new_session_mission"] = f"Issue #{issue['number']}: {issue['title']}"
+                                st.session_state["nav_page"] = "Session Management"
+                                request_rerun()
+                else:
+                    st.info("No open issues.")
+
+            with tab_prs:
+                prs = list_repo_prs(selected_repo)
+                if prs:
+                    for pr in prs:
+                        with st.expander(f"#{pr['number']}: {pr['title']}"):
+                            st.write(f"State: {pr['state']}")
+                            st.write(f"Author: {pr['author']['login']}")
+                            st.write(f"Branch: {pr['headRefName']}")
+                            st.write(f"Created: {pr['createdAt']}")
+                else:
+                    st.info("No open pull requests.")
+
+            with tab_actions:
+                st.markdown("#### Quick Actions")
+                col1, col2 = st.columns(2)
+                with col1:
+                    if st.button("Clone to Project"):
+                        st.info(f"Clone command: git clone https://github.com/{selected_repo}.git")
+                with col2:
+                    if st.button("Clear Selection"):
+                        del st.session_state["selected_repo"]
+                        request_rerun()
+    else:
+        st.info("Configure GitHub token to view repositories.")
+
+
+def render_project_settings(orchestrator: Orchestrator, sessions: list[SessionRow]) -> None:
+    """Render the project settings page."""
+    st.title("Project Settings")
+    st.caption("Configure per-project settings, agents, and automation rules.")
+
+    # Project list from sessions
+    projects = {}
+    for session in sessions:
+        project = session.project_name or "Default"
+        if project not in projects:
+            projects[project] = []
+        projects[project].append(session)
+
+    if not projects:
+        st.info("No projects found. Start a session to create a project.")
+        return
+
+    # Project selector
+    selected_project = st.selectbox(
+        "Select Project",
+        list(projects.keys()),
+        key="selected_project"
+    )
+
+    st.divider()
+
+    # Project overview
+    project_sessions = projects.get(selected_project, [])
+    st.markdown(f"### Project: {selected_project}")
+
+    # Project metrics
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("Total Sessions", len(project_sessions))
+    m2.metric("Running", sum(1 for s in project_sessions if s.status == SessionStatus.RUNNING))
+    m3.metric("Completed", sum(1 for s in project_sessions if s.status == SessionStatus.COMPLETED))
+    m4.metric("QA Passed", sum(1 for s in project_sessions if s.qa_passed))
+
+    # Project configuration
+    with st.expander("Project Configuration", expanded=True):
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.markdown("#### Repository Settings")
+            github_repo = st.text_input(
+                "GitHub Repository",
+                placeholder="owner/repo",
+                key=f"{selected_project}_github_repo"
+            )
+            work_dir = st.text_input(
+                "Work Directory",
+                value=f"projects/{selected_project.lower().replace(' ', '_')}",
+                key=f"{selected_project}_work_dir"
+            )
+
+        with col2:
+            st.markdown("#### Automation Settings")
+            auto_commit = st.toggle(
+                "Auto-commit changes",
+                key=f"{selected_project}_auto_commit"
+            )
+            branch_prefix = st.text_input(
+                "Branch Prefix",
+                value="auto/",
+                key=f"{selected_project}_branch_prefix"
+            )
+            default_agent = st.selectbox(
+                "Default Agent",
+                ["pm", "arch", "eng", "qa"],
+                index=2,
+                key=f"{selected_project}_default_agent"
+            )
+
+        if st.button("Save Project Settings", key=f"save_{selected_project}"):
+            st.success(f"Settings saved for {selected_project}")
+
+    # Agent assignments
+    st.markdown("### Agent Assignments")
+    st.caption("Assign specific agents or models to this project.")
+
+    agent_cols = st.columns(4)
+    agents = ["pm", "arch", "eng", "qa"]
+    agent_labels = ["Product Manager", "Architect", "Engineer", "QA"]
+
+    for col, agent, label in zip(agent_cols, agents, agent_labels):
+        with col:
+            st.markdown(f"**{label}**")
+            model = st.selectbox(
+                "Model",
+                ["claude-sonnet-4-20250514", "claude-opus-4-20250514", "custom"],
+                key=f"{selected_project}_{agent}_model",
+                label_visibility="collapsed"
+            )
+            priority = st.slider(
+                "Priority",
+                1, 10, 5,
+                key=f"{selected_project}_{agent}_priority",
+                help="Higher = more resources allocated"
+            )
+
+    # Project sessions list
+    st.markdown("### Project Sessions")
+    for session in project_sessions:
+        with st.expander(f"Session {session.session_id[:8]} - {session.status.value}"):
+            st.write(f"**Mission:** {session.mission}")
+            st.write(f"**Phase:** {session.phase}")
+            st.write(f"**Iterations:** {session.iteration_count}")
+            st.progress(session.progress)
+            st.caption(f"Updated: {session.updated_at.isoformat()}")
+
+
 def main() -> None:
-    """Run the Streamlit dashboard."""
-    st.set_page_config(page_title="Autonomous Software Studio Control Panel", layout="wide")
+    """Run the Streamlit dashboard - 2055+ Edition."""
+    st.set_page_config(
+        page_title="Autonomous Software Studio // 2055",
+        layout="wide",
+        initial_sidebar_state="expanded"
+    )
     inject_styles()
 
     orchestrator = get_orchestrator()
@@ -1011,8 +1483,21 @@ def main() -> None:
         st.error(f"Failed to load sessions: {exc}")
         sessions = []
 
-    st.sidebar.markdown("## Control Panel")
-    st.sidebar.caption("Human oversight for autonomous workflows.")
+    # Sidebar with futuristic styling
+    st.sidebar.markdown("## CONTROL NEXUS")
+    st.sidebar.caption("Neural Interface // v2055.1.0")
+
+    # System status indicators
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("**SYSTEM STATUS**")
+    status_col1, status_col2 = st.sidebar.columns(2)
+    with status_col1:
+        st.markdown(f"Sessions: **{len(sessions)}**")
+    with status_col2:
+        running = sum(1 for s in sessions if s.status == SessionStatus.RUNNING)
+        st.markdown(f"Active: **{running}**")
+
+    st.sidebar.markdown("---")
 
     page = st.sidebar.radio(
         "Navigation",
@@ -1022,6 +1507,8 @@ def main() -> None:
             "Approval Interface",
             "Live Logs",
             "Metrics & Analytics",
+            "GitHub Integration",
+            "Project Settings",
             "Agent Account Management",
         ],
         key="nav_page",
@@ -1037,6 +1524,10 @@ def main() -> None:
         render_live_logs(orchestrator, sessions)
     elif page == "Metrics & Analytics":
         render_metrics_analytics(sessions)
+    elif page == "GitHub Integration":
+        render_github_integration()
+    elif page == "Project Settings":
+        render_project_settings(orchestrator, sessions)
     elif page == "Agent Account Management":
         render_agent_account_management()
 
