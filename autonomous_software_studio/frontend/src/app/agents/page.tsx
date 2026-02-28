@@ -563,7 +563,7 @@ export default function AgentsPage() {
                     {/* Active Prompt Info */}
                     {activePrompt && (
                       <div className="text-xs text-foreground-muted">
-                        Active: {activePrompt.path}
+                        Active version: {activePrompt.version}
                       </div>
                     )}
 
