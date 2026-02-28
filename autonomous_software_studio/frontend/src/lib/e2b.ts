@@ -1,6 +1,8 @@
+import 'server-only'
 import { Sandbox } from '@e2b/code-interpreter'
 
-export type SupportedLanguage = 'python' | 'javascript' | 'typescript' | 'bash'
+// Re-export client-safe constants so server-side callers can use one import.
+export type { SupportedLanguage } from './e2b-constants'
 
 export interface ExecutionResult {
   stdout: string
@@ -12,28 +14,25 @@ export interface ExecutionResult {
 
 /**
  * Create a new E2B sandbox.
- * Should only be called in server-side code (Route Handlers).
+ * Only callable from Route Handlers or Server Components.
  */
 export async function createSandbox(
-  language: SupportedLanguage = 'python',
+  _language: import('./e2b-constants').SupportedLanguage = 'python',
   timeoutMs = 300_000
 ): Promise<Sandbox> {
   const apiKey = process.env.E2B_API_KEY
   if (!apiKey) throw new Error('E2B_API_KEY environment variable is not set')
 
-  return Sandbox.create({
-    apiKey,
-    timeoutMs,
-  })
+  return Sandbox.create({ apiKey, timeoutMs })
 }
 
 /**
- * Execute code inside an existing sandbox (by sandbox ID).
+ * Execute code inside an existing sandbox (by E2B sandbox ID).
  */
 export async function executeSandboxCode(
   sandboxId: string,
   code: string,
-  language: SupportedLanguage = 'python'
+  language: import('./e2b-constants').SupportedLanguage = 'python'
 ): Promise<ExecutionResult> {
   const apiKey = process.env.E2B_API_KEY
   if (!apiKey) throw new Error('E2B_API_KEY environment variable is not set')
@@ -73,11 +72,4 @@ export async function killSandbox(sandboxId: string): Promise<void> {
 
   const sandbox = await Sandbox.connect(sandboxId, { apiKey })
   await sandbox.kill()
-}
-
-export const LANGUAGE_TEMPLATES: Record<SupportedLanguage, string> = {
-  python: '# Python 3\nprint("Hello from Sovereign AI sandbox!")',
-  javascript: '// Node.js\nconsole.log("Hello from Sovereign AI sandbox!")',
-  typescript: '// TypeScript\nconst msg: string = "Hello from Sovereign AI sandbox!"\nconsole.log(msg)',
-  bash: '#!/bin/bash\necho "Hello from Sovereign AI sandbox!"',
 }
