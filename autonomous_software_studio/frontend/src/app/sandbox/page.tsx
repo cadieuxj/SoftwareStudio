@@ -22,8 +22,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn, copyToClipboard, downloadAsFile } from '@/lib/utils'
 import toast from 'react-hot-toast'
-import type { SupportedLanguage } from '@/lib/e2b'
-import { LANGUAGE_TEMPLATES } from '@/lib/e2b'
+import type { SupportedLanguage } from '@/lib/e2b-constants'
+import { LANGUAGE_TEMPLATES } from '@/lib/e2b-constants'
 
 // ---------------------------------------------------------------------------
 

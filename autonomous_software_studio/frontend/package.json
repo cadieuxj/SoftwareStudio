@@ -46,6 +46,7 @@
     "react-markdown": "^9.0.1",
     "react-syntax-highlighter": "^15.6.1",
     "recharts": "^2.15.0",
+    "server-only": "^0.0.1",
     "svix": "^1.86.0",
     "tailwind-merge": "^2.6.0",
     "zustand": "^5.0.2"

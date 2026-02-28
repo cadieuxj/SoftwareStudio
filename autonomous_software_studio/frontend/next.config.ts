@@ -2,6 +2,10 @@ import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
   output: 'standalone',
+  // Prevent webpack from trying to bundle server-only packages for the browser.
+  // These packages use Node.js built-ins (node:crypto, node:fs, etc.) and must
+  // only run in Route Handlers / Server Components.
+  serverExternalPackages: ['@e2b/code-interpreter', 'e2b', 'portkey-ai', 'postgres'],
   experimental: {
     serverActions: {
       bodySizeLimit: '2mb',
