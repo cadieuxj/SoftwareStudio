@@ -16,31 +16,27 @@ export function MainLayout({ children }: MainLayoutProps) {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Animated Grid Background */}
-      <div className="fixed inset-0 cyber-grid opacity-30 pointer-events-none" />
+      {/* Subtle ambient radial gradient for depth */}
+      <div
+        className="fixed inset-0 pointer-events-none"
+        style={{
+          background:
+            'radial-gradient(ellipse 80% 40% at 50% -10%, rgba(99,102,241,0.06), transparent)',
+        }}
+      />
 
-      {/* Gradient Overlay */}
-      <div className="fixed inset-0 bg-gradient-to-br from-neon-cyan/5 via-transparent to-neon-magenta/5 pointer-events-none" />
-
-      {/* Sidebar */}
       <Sidebar />
-
-      {/* Header */}
       <Header />
 
-      {/* Main Content */}
       <main
         className={cn(
-          'pt-16 min-h-screen transition-all duration-300 relative',
-          sidebarOpen ? 'pl-[280px]' : 'pl-[80px]'
+          'pt-14 min-h-screen transition-all duration-200 relative',
+          sidebarOpen ? 'pl-[220px]' : 'pl-[60px]'
         )}
       >
-        <div className="p-6">
-          {children}
-        </div>
+        <div className="p-6">{children}</div>
       </main>
 
-      {/* Global Modals */}
       <CreateSessionModal />
     </div>
   )

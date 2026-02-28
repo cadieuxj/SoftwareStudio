@@ -13,68 +13,22 @@ import {
   Settings,
   Bot,
   ChevronLeft,
-  Sparkles,
   Terminal,
+  Zap,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useUIStore } from '@/store'
-import { Button } from '@/components/ui'
 
 const navItems = [
-  {
-    label: 'Dashboard',
-    href: '/',
-    icon: LayoutDashboard,
-    description: 'Overview & Metrics',
-  },
-  {
-    label: 'Sessions',
-    href: '/sessions',
-    icon: PlayCircle,
-    description: 'Manage Sessions',
-  },
-  {
-    label: 'Artifacts',
-    href: '/artifacts',
-    icon: FileText,
-    description: 'Review Artifacts',
-  },
-  {
-    label: 'Approvals',
-    href: '/approvals',
-    icon: CheckCircle2,
-    description: 'Pending Reviews',
-  },
-  {
-    label: 'Logs',
-    href: '/logs',
-    icon: ScrollText,
-    description: 'Live Logs',
-  },
-  {
-    label: 'GitHub',
-    href: '/github',
-    icon: Github,
-    description: 'Repository Integration',
-  },
-  {
-    label: 'Projects',
-    href: '/projects',
-    icon: Settings,
-    description: 'Project Settings',
-  },
-  {
-    label: 'Agents',
-    href: '/agents',
-    icon: Bot,
-    description: 'Agent Configuration',
-  },
-  {
-    label: 'Sandbox',
-    href: '/sandbox',
-    icon: Terminal,
-    description: 'E2B Code Execution',
-  },
+  { label: 'Dashboard',  href: '/',          icon: LayoutDashboard },
+  { label: 'Sessions',   href: '/sessions',  icon: PlayCircle      },
+  { label: 'Artifacts',  href: '/artifacts', icon: FileText        },
+  { label: 'Approvals',  href: '/approvals', icon: CheckCircle2    },
+  { label: 'Logs',       href: '/logs',      icon: ScrollText      },
+  { label: 'GitHub',     href: '/github',    icon: Github          },
+  { label: 'Projects',   href: '/projects',  icon: Settings        },
+  { label: 'Agents',     href: '/agents',    icon: Bot             },
+  { label: 'Sandbox',    href: '/sandbox',   icon: Terminal        },
 ]
 
 export function Sidebar() {
@@ -84,36 +38,31 @@ export function Sidebar() {
   return (
     <motion.aside
       initial={false}
-      animate={{ width: sidebarOpen ? 280 : 80 }}
-      transition={{ duration: 0.3, ease: 'easeInOut' }}
-      className={cn(
-        'fixed left-0 top-0 z-40 h-screen',
-        'bg-background-secondary/80 backdrop-blur-xl',
-        'border-r border-border',
-        'flex flex-col'
-      )}
+      animate={{ width: sidebarOpen ? 220 : 60 }}
+      transition={{ duration: 0.2, ease: 'easeInOut' }}
+      className="fixed left-0 top-0 z-40 h-screen flex flex-col bg-background-secondary border-r border-white/[0.06] overflow-hidden"
     >
       {/* Logo */}
-      <div className="flex h-16 items-center justify-between px-4 border-b border-border">
-        <Link href="/" className="flex items-center gap-3">
-          <div className="relative">
-            <Sparkles className="h-8 w-8 text-neon-cyan" />
-            <div className="absolute inset-0 blur-lg bg-neon-cyan/30" />
+      <div className="flex h-14 items-center gap-3 px-3.5 border-b border-white/[0.06] flex-shrink-0">
+        <Link href="/" className="flex items-center gap-3 min-w-0">
+          <div className="flex-shrink-0 h-8 w-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center">
+            <Zap className="h-4 w-4 text-indigo-400" />
           </div>
           <AnimatePresence mode="wait">
             {sidebarOpen && (
               <motion.div
-                initial={{ opacity: 0, x: -10 }}
+                key="logo-text"
+                initial={{ opacity: 0, x: -6 }}
                 animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -10 }}
-                transition={{ duration: 0.2 }}
+                exit={{ opacity: 0, x: -6 }}
+                transition={{ duration: 0.15 }}
+                className="min-w-0"
               >
-                <h1 className="font-display text-lg font-bold tracking-wider text-foreground">
-                  <span className="text-neon-cyan">SOVEREIGN</span>
-                  <span className="text-neon-magenta"> AI</span>
-                </h1>
-                <p className="text-[10px] uppercase tracking-[0.2em] text-foreground-subtle">
-                  AI-Native IDE Platform
+                <p className="font-semibold text-sm text-foreground leading-tight truncate">
+                  Sovereign AI
+                </p>
+                <p className="text-[11px] text-foreground-subtle leading-tight">
+                  Dev Studio
                 </p>
               </motion.div>
             )}
@@ -122,8 +71,8 @@ export function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto py-4 px-2">
-        <ul className="space-y-1">
+      <nav className="flex-1 overflow-y-auto py-2 px-2">
+        <ul className="space-y-0.5">
           {navItems.map((item) => {
             const isActive = pathname === item.href
             const Icon = item.icon
@@ -133,58 +82,38 @@ export function Sidebar() {
                 <Link
                   href={item.href}
                   className={cn(
-                    'flex items-center gap-3 rounded-lg px-3 py-3',
-                    'transition-all duration-300',
-                    'group relative overflow-hidden',
+                    'relative flex items-center gap-3 h-9 px-2.5 rounded-md',
+                    'text-sm transition-colors duration-150 group',
                     isActive
-                      ? 'bg-gradient-to-r from-neon-cyan/20 to-neon-magenta/10 text-neon-cyan border border-neon-cyan/30'
-                      : 'text-foreground-muted hover:text-foreground hover:bg-background-tertiary'
+                      ? 'bg-indigo-500/10 text-indigo-300'
+                      : 'text-foreground-muted hover:text-foreground hover:bg-white/[0.05]'
                   )}
                 >
-                  {/* Glow effect on hover */}
-                  <div
-                    className={cn(
-                      'absolute inset-0 opacity-0 group-hover:opacity-100',
-                      'bg-gradient-to-r from-neon-cyan/5 to-transparent',
-                      'transition-opacity duration-300'
-                    )}
-                  />
+                  {/* Active left bar */}
+                  {isActive && (
+                    <motion.span
+                      layoutId="navIndicator"
+                      className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-indigo-400 rounded-r-full"
+                      transition={{ duration: 0.2 }}
+                    />
+                  )}
 
-                  <Icon
-                    className={cn(
-                      'h-5 w-5 shrink-0 relative z-10',
-                      'transition-colors duration-300',
-                      isActive && 'text-glow-cyan'
-                    )}
-                  />
+                  <Icon className="h-4 w-4 flex-shrink-0" />
 
                   <AnimatePresence mode="wait">
                     {sidebarOpen && (
-                      <motion.div
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -10 }}
-                        transition={{ duration: 0.2 }}
-                        className="relative z-10 flex flex-col"
+                      <motion.span
+                        key="nav-label"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.12 }}
+                        className="font-medium truncate"
                       >
-                        <span className="font-display text-sm font-medium">
-                          {item.label}
-                        </span>
-                        <span className="text-[10px] text-foreground-subtle">
-                          {item.description}
-                        </span>
-                      </motion.div>
+                        {item.label}
+                      </motion.span>
                     )}
                   </AnimatePresence>
-
-                  {/* Active indicator */}
-                  {isActive && (
-                    <motion.div
-                      layoutId="activeIndicator"
-                      className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-neon-cyan rounded-r-full"
-                      transition={{ duration: 0.3 }}
-                    />
-                  )}
                 </Link>
               </li>
             )
@@ -192,41 +121,21 @@ export function Sidebar() {
         </ul>
       </nav>
 
-      {/* Toggle Button */}
-      <div className="border-t border-border p-4">
-        <Button
-          variant="ghost"
-          size="icon"
+      {/* Collapse toggle */}
+      <div className="border-t border-white/[0.06] p-3 flex-shrink-0">
+        <button
           onClick={toggleSidebar}
-          className={cn(
-            'w-full justify-center',
-            sidebarOpen && 'justify-end'
-          )}
+          className="flex items-center justify-center h-8 w-8 rounded-md text-foreground-subtle hover:text-foreground hover:bg-white/[0.06] transition-colors"
+          aria-label="Toggle sidebar"
         >
           <ChevronLeft
             className={cn(
-              'h-5 w-5 transition-transform duration-300',
+              'h-4 w-4 transition-transform duration-200',
               !sidebarOpen && 'rotate-180'
             )}
           />
-        </Button>
+        </button>
       </div>
-
-      {/* Version Info */}
-      <AnimatePresence mode="wait">
-        {sidebarOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="px-4 pb-4 text-center"
-          >
-            <p className="text-[10px] text-foreground-subtle">
-              v1.0.0 | 2055+ Edition
-            </p>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </motion.aside>
   )
 }
