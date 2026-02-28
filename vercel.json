@@ -6,11 +6,6 @@
   "outputDirectory": "autonomous_software_studio/frontend/.next",
   "devCommand": "cd autonomous_software_studio/frontend && npm run dev",
   "regions": ["iad1"],
-  "functions": {
-    "autonomous_software_studio/frontend/src/app/api/**/*.ts": {
-      "maxDuration": 60
-    }
-  },
   "headers": [
     {
       "source": "/(.*)",
