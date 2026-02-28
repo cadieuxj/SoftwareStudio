@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Rocket, Sparkles } from 'lucide-react'
 import { toast } from 'react-hot-toast'
@@ -27,10 +27,10 @@ export function CreateSessionModal() {
   const [projectName, setProjectName] = useState(prefillProjectName)
 
   // Reset form when modal opens with prefill
-  useState(() => {
+  useEffect(() => {
     setMission(prefillMission)
     setProjectName(prefillProjectName)
-  })
+  }, [prefillMission, prefillProjectName])
 
   const createMutation = useMutation({
     mutationFn: sessionsApi.create,

@@ -17,8 +17,9 @@ export async function GET() {
 
   if (!org) {
     return NextResponse.json({
-      total: 0, running: 0, awaiting_approval: 0, completed: 0,
-      failed: 0, qa_pass_rate: 0, avg_iterations: 0,
+      total_sessions: 0, running_sessions: 0, awaiting_approval: 0,
+      completed_sessions: 0, failed_sessions: 0, expired_sessions: 0,
+      qa_passed_count: 0, average_qa_iterations: 0, status_breakdown: {},
     })
   }
 
@@ -29,22 +30,22 @@ export async function GET() {
       awaiting_approval: sql<number>`count(*) filter (where status = 'awaiting_approval')`,
       completed: sql<number>`count(*) filter (where status = 'completed')`,
       failed: sql<number>`count(*) filter (where status = 'failed')`,
+      expired: sql<number>`count(*) filter (where status = 'expired')`,
       qa_passed: sql<number>`count(*) filter (where qa_passed = true)`,
       avg_iterations: sql<number>`coalesce(avg(iteration_count), 0)`,
     })
     .from(sessions)
     .where(eq(sessions.orgId, org.id))
 
-  const qa_pass_rate =
-    row.completed > 0 ? Math.round((Number(row.qa_passed) / Number(row.completed)) * 100) : 0
-
   return NextResponse.json({
-    total: Number(row.total),
-    running: Number(row.running),
+    total_sessions: Number(row.total),
+    running_sessions: Number(row.running),
     awaiting_approval: Number(row.awaiting_approval),
-    completed: Number(row.completed),
-    failed: Number(row.failed),
-    qa_pass_rate,
-    avg_iterations: Math.round(Number(row.avg_iterations) * 10) / 10,
+    completed_sessions: Number(row.completed),
+    failed_sessions: Number(row.failed),
+    expired_sessions: Number(row.expired),
+    qa_passed_count: Number(row.qa_passed),
+    average_qa_iterations: Math.round(Number(row.avg_iterations) * 10) / 10,
+    status_breakdown: {},
   })
 }

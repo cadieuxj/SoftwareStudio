@@ -45,10 +45,18 @@ export async function executeSandboxCode(
     return {
       stdout: execution.logs.stdout.join('\n'),
       stderr: execution.logs.stderr.join('\n'),
-      results: execution.results.map((r) => ({
-        type: r.type ?? 'unknown',
-        data: r.data,
-      })),
+      results: execution.results.map((r) => {
+        // The E2B Result type uses format-specific properties rather than a
+        // generic `type` discriminant. Detect the format from the present keys.
+        const rr = r as unknown as Record<string, unknown>
+        const type = rr['png'] ? 'image/png'
+          : rr['jpeg'] ? 'image/jpeg'
+          : rr['svg'] ? 'image/svg+xml'
+          : rr['html'] ? 'text/html'
+          : 'text/plain'
+        const data = rr['png'] ?? rr['jpeg'] ?? rr['svg'] ?? rr['html'] ?? rr['text'] ?? rr['data']
+        return { type, data }
+      }),
       error: execution.error?.value,
       exitCode: 0,
     }
