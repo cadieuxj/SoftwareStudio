@@ -14,6 +14,7 @@ import {
   Bot,
   ChevronLeft,
   Sparkles,
+  Terminal,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useUIStore } from '@/store'
@@ -68,6 +69,12 @@ const navItems = [
     icon: Bot,
     description: 'Agent Configuration',
   },
+  {
+    label: 'Sandbox',
+    href: '/sandbox',
+    icon: Terminal,
+    description: 'E2B Code Execution',
+  },
 ]
 
 export function Sidebar() {
@@ -102,11 +109,11 @@ export function Sidebar() {
                 transition={{ duration: 0.2 }}
               >
                 <h1 className="font-display text-lg font-bold tracking-wider text-foreground">
-                  <span className="text-neon-cyan">AUTO</span>
-                  <span className="text-neon-magenta">STUDIO</span>
+                  <span className="text-neon-cyan">SOVEREIGN</span>
+                  <span className="text-neon-magenta"> AI</span>
                 </h1>
                 <p className="text-[10px] uppercase tracking-[0.2em] text-foreground-subtle">
-                  Software Factory
+                  AI-Native IDE Platform
                 </p>
               </motion.div>
             )}
