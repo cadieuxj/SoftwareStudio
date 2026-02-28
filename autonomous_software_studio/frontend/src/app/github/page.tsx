@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { toast } from 'react-hot-toast'
@@ -59,11 +59,11 @@ export default function GitHubPage() {
   })
 
   // Update auth status
-  useState(() => {
+  useEffect(() => {
     if (authStatus) {
       setAuthenticated(authStatus.authenticated, authStatus.username)
     }
-  })
+  }, [authStatus, setAuthenticated])
 
   // Fetch repos
   const { data: repos = [], isLoading: reposLoading } = useQuery({

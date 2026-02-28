@@ -5,6 +5,11 @@ import type {
   AgentRole,
   AgentSettings,
   LogEntry,
+  PromptVersion,
+  Metrics,
+  GitHubRepo,
+  GitHubIssue,
+  GitHubPR,
 } from '@/types'
 
 const BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8000'
@@ -51,16 +56,7 @@ export const sessionsApi = {
 // ─── Metrics ─────────────────────────────────────────────────────────────────
 
 export const metricsApi = {
-  get: () =>
-    request<{
-      total: number
-      running: number
-      awaiting_approval: number
-      completed: number
-      failed: number
-      qa_pass_rate: number
-      avg_iterations: number
-    }>('/metrics'),
+  get: () => request<Metrics>('/metrics'),
 
   getHealth: () => request<{ status: string }>('/healthz'),
 }
@@ -83,9 +79,7 @@ export const agentSettingsApi = {
     request<{ content: string; version: string }>(`/agents/${agent}/prompt`),
 
   getPromptHistory: (agent: AgentRole) =>
-    request<{ path: string; version: string; note: string; date: string }[]>(
-      `/agents/${agent}/prompt/history`
-    ),
+    request<PromptVersion[]>(`/agents/${agent}/prompt/history`),
 
   savePromptVersion: (agent: AgentRole, content: string, note: string) =>
     request<{ version: string }>(`/agents/${agent}/prompt`, {
@@ -114,32 +108,13 @@ export const githubApi = {
   checkAuth: () => request<{ authenticated: boolean; username?: string }>('/github/auth'),
 
   listRepos: (org?: string) =>
-    request<{ full_name: string; description: string; private: boolean; default_branch: string }[]>(
-      `/github/repos${org ? `?org=${org}` : ''}`
-    ),
+    request<GitHubRepo[]>(`/github/repos${org ? `?org=${org}` : ''}`),
 
   listIssues: (owner: string, repo: string, state = 'open') =>
-    request<
-      {
-        number: number
-        title: string
-        body: string
-        state: string
-        labels: { name: string; color: string }[]
-      }[]
-    >(`/github/repos/${owner}/${repo}/issues?state=${state}`),
+    request<GitHubIssue[]>(`/github/repos/${owner}/${repo}/issues?state=${state}`),
 
   listPRs: (owner: string, repo: string, state = 'open') =>
-    request<
-      {
-        number: number
-        title: string
-        state: string
-        head: string
-        base: string
-        html_url: string
-      }[]
-    >(`/github/repos/${owner}/${repo}/pulls?state=${state}`),
+    request<GitHubPR[]>(`/github/repos/${owner}/${repo}/pulls?state=${state}`),
 
   createSessionFromIssue: (owner: string, repo: string, issueNumber: number) =>
     request<Session>('/github/create-session', {
