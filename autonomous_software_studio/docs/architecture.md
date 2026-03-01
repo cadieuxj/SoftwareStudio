@@ -8,7 +8,7 @@ PM → Architect → Human Gate → Engineer → QA → Complete.
 - **Orchestrator**: Manages sessions, checkpoints, and approvals.
 - **Workflow**: LangGraph state machine for phase transitions.
 - **Agents**: PM, Architect, Engineer, and QA wrappers.
-- **Dashboard**: Streamlit control panel for human-in-the-loop review.
+- **Frontend**: Next.js 15 application (Vercel / Docker) providing session management, approval flows, a project Gantt timeline, team management, and a live code sandbox. The legacy Streamlit UI has been removed.
 - **MCP Layer**: Declarative tool injection via `config/mcp_servers.json`.
 
 ## Persistence

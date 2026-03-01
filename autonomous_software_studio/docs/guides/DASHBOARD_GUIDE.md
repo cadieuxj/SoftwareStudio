@@ -1,12 +1,18 @@
 # Dashboard User Guide
 
-## Overview
+> **DEPRECATED** — The Streamlit dashboard has been removed. The production UI is the **Next.js 15 frontend** (deployed on Vercel or locally via `cd frontend && npm run dev`). This document is retained for historical reference only.
+>
+> New pages available in the Next.js frontend:
+> - `/projects` — Gantt timeline grouped by project (zoomable: 1d / 7d / 30d / All)
+> - `/team` — Lite team management: org member list, roles, session counts, last-active
 
-The Autonomous Software Studio Dashboard provides a futuristic 2055+ themed web interface for managing AI-powered software development sessions. Built with Streamlit, it offers real-time monitoring, approval workflows, and comprehensive analytics.
+## Overview (archived)
 
-## Accessing the Dashboard
+The original Streamlit dashboard provided a Python-based web interface for monitoring sessions and approvals. It has been superseded by the Next.js frontend.
 
-**URL:** http://localhost:8501 (default)
+## Accessing the Dashboard (archived)
+
+**URL:** http://localhost:8501 (no longer available — service removed)
 
 **Requirements:**
 - Modern web browser (Chrome, Firefox, Safari, Edge)
