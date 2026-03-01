@@ -106,7 +106,7 @@ SoftwareStudio/
     ├── README.md                      ← legacy stub (superseded by this file)
     ├── docker-compose.yml             ← full-stack service definitions
     ├── Dockerfile                     ← Python orchestrator image
-    ├── Dockerfile.dashboard           ← Streamlit image (legacy UI)
+    ├── Dockerfile                     ← Python orchestrator image (primary)
     ├── pyproject.toml                 ← Python project metadata & tool config
     ├── requirements.txt               ← Python dependencies
     ├── .env.template                  ← backend env var template
@@ -125,7 +125,7 @@ SoftwareStudio/
     │   │   └── qa_agent.py
     │   ├── personas/                  ← system prompts per agent role
     │   ├── interfaces/
-    │   │   └── dashboard.py           ← Streamlit UI (legacy, being replaced)
+    │   │   └── dashboard.py           ← legacy Streamlit stub (unused, retained for reference)
     │   ├── config/                    ← config management helpers
     │   └── mcp/                       ← Model Context Protocol integration
     │
@@ -148,6 +148,8 @@ SoftwareStudio/
     │       │   ├── layout.tsx
     │       │   ├── page.tsx           ← Dashboard
     │       │   ├── sessions/
+    │       │   ├── projects/          ← Gantt timeline (sessions grouped by project)
+    │       │   ├── team/              ← Lite team — org member list + activity
     │       │   ├── approvals/
     │       │   ├── agents/
     │       │   ├── artifacts/
@@ -390,6 +392,8 @@ MCP server configurations live in `config/mcp_servers.json`. Each agent profile 
 | `/` | Dashboard | Metrics overview, live session counts, recent activity |
 | `/sessions` | Sessions | Full session list with status filtering |
 | `/sessions/[id]` | Session Detail | Live phase tracking, artifact preview, approve/reject actions |
+| `/projects` | Projects | Gantt timeline — sessions grouped by project, zoom controls |
+| `/team` | Team | Lite team — org member list, roles, session counts, last-active |
 | `/approvals` | Approvals Queue | All sessions in `awaiting_approval` state |
 | `/artifacts` | Artifacts Browser | Browse PRDs, tech specs, bug reports |
 | `/agents` | Agent Config | Provider settings, API keys, prompt editor with version history |
@@ -417,6 +421,7 @@ MCP server configurations live in `config/mcp_servers.json`. Each agent profile 
 |---|---|---|
 | `GET` | `/api/health` | Health check |
 | `GET` | `/api/metrics` | Aggregate metrics (from DB) |
+| `GET` | `/api/team` | Org member list + session stats (via Clerk API) |
 | `POST` | `/api/webhooks/clerk` | Clerk org sync webhook |
 
 **Sandbox**
@@ -852,7 +857,6 @@ docker compose logs orchestrator --tail 50
 | `postgres` | postgres:16-alpine | 5432 | `pg_isready` |
 | `redis` | redis:7-alpine | 6379 | `PING` |
 | `orchestrator` | `./Dockerfile` | 8000 | `GET /healthz` |
-| `dashboard` | `./Dockerfile.dashboard` | 8501 | Streamlit endpoint |
 
 ### With monitoring stack
 
@@ -867,7 +871,6 @@ docker compose --profile monitoring up -d
 ```bash
 # View logs
 docker compose logs -f orchestrator
-docker compose logs -f dashboard
 
 # Restart a single service
 docker compose restart orchestrator

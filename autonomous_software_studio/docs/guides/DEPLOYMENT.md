@@ -67,12 +67,16 @@ docker compose ps
 
 # Check health endpoints
 curl http://localhost:8000/healthz
-curl http://localhost:8501/_stcore/health
 ```
 
-### 5. Access Dashboard
+### 5. Access the Frontend
 
-Open http://localhost:8501 in your browser.
+The Next.js frontend is deployed on **Vercel**. For local development, run:
+
+```bash
+cd frontend && npm run dev
+# → http://localhost:3000
+```
 
 ---
 
@@ -84,13 +88,13 @@ Minimal setup for local development.
 
 ```bash
 # Start with default settings
-docker compose up -d postgres redis orchestrator dashboard
+docker compose up -d postgres redis orchestrator
 ```
 
 **Characteristics:**
 - PostgreSQL and Redis running locally
 - Debug logging enabled
-- Hot reload for development
+- Frontend served separately via `cd frontend && npm run dev`
 - No monitoring stack
 
 ### Production
@@ -115,7 +119,7 @@ For testing without persistent storage.
 
 ```bash
 # Set SQLite mode
-DATABASE_TYPE=sqlite docker compose up -d orchestrator dashboard
+DATABASE_TYPE=sqlite docker compose up -d orchestrator
 ```
 
 ---
@@ -129,9 +133,10 @@ DATABASE_TYPE=sqlite docker compose up -d orchestrator dashboard
 | postgres | postgres:16-alpine | 5432 | Primary database |
 | redis | redis:7-alpine | 6379 | Session cache |
 | orchestrator | custom | 8000 | Main API server |
-| dashboard | custom | 8501 | Streamlit UI |
 | prometheus | prom/prometheus | 9090 | Metrics (optional) |
 | grafana | grafana/grafana | 3000 | Dashboards (optional) |
+
+> **Note:** The Streamlit dashboard has been removed. The frontend is a Next.js 15 application deployed on Vercel (or via `npm run dev` locally).
 
 ### Building Images
 

@@ -167,6 +167,19 @@ export interface GitHubPR {
   user: GitHubUser
 }
 
+// Team Types
+export interface TeamMember {
+  id: string
+  firstName: string | null
+  lastName: string | null
+  email: string | null
+  avatarUrl: string | null
+  role: string
+  joinedAt: string | null
+  sessionCount: number
+  lastActive: string | null
+}
+
 // Project Types
 export interface ProjectSettings {
   project_name: string

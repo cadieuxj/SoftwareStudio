@@ -10,11 +10,12 @@ import {
   CheckCircle2,
   ScrollText,
   Github,
-  Settings,
+  FolderKanban,
   Bot,
   ChevronLeft,
   Terminal,
   Zap,
+  Users,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useUIStore } from '@/store'
@@ -22,11 +23,12 @@ import { useUIStore } from '@/store'
 const navItems = [
   { label: 'Dashboard',  href: '/',          icon: LayoutDashboard },
   { label: 'Sessions',   href: '/sessions',  icon: PlayCircle      },
+  { label: 'Projects',   href: '/projects',  icon: FolderKanban    },
+  { label: 'Team',       href: '/team',      icon: Users           },
   { label: 'Artifacts',  href: '/artifacts', icon: FileText        },
   { label: 'Approvals',  href: '/approvals', icon: CheckCircle2    },
   { label: 'Logs',       href: '/logs',      icon: ScrollText      },
   { label: 'GitHub',     href: '/github',    icon: Github          },
-  { label: 'Projects',   href: '/projects',  icon: Settings        },
   { label: 'Agents',     href: '/agents',    icon: Bot             },
   { label: 'Sandbox',    href: '/sandbox',   icon: Terminal        },
 ]

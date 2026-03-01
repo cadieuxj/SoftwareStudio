@@ -10,6 +10,7 @@ import type {
   GitHubRepo,
   GitHubIssue,
   GitHubPR,
+  TeamMember,
 } from '@/types'
 
 const BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8000'
@@ -123,6 +124,28 @@ export const githubApi = {
     }),
 }
 
+// ─── Projects (aggregated from sessions via internal Next.js route) ───────────
+
+export const projectsApi = {
+  // Re-use the sessions Next.js route (not the Python orchestrator)
+  listSessions: () => internalRequest<Session[]>('/api/sessions'),
+}
+
+// ─── Team (Next.js API route, not orchestrator) ───────────────────────────────
+
+async function internalRequest<T>(path: string): Promise<T> {
+  const res = await fetch(path, { headers: { 'Content-Type': 'application/json' } })
+  if (!res.ok) {
+    const text = await res.text().catch(() => res.statusText)
+    throw new Error(`API ${res.status}: ${text}`)
+  }
+  return res.json() as Promise<T>
+}
+
+export const teamApi = {
+  list: () => internalRequest<TeamMember[]>('/api/team'),
+}
+
 // ─── Query Keys ───────────────────────────────────────────────────────────────
 
 export const queryKeys = {
@@ -140,4 +163,6 @@ export const queryKeys = {
   githubRepos: (org?: string) => ['github', 'repos', org ?? 'all'] as const,
   githubIssues: (owner: string, repo: string) => ['github', owner, repo, 'issues'] as const,
   githubPRs: (owner: string, repo: string) => ['github', owner, repo, 'prs'] as const,
+  team: ['team'] as const,
+  projects: ['projects'] as const,
 } as const
