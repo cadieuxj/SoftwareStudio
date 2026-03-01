@@ -35,7 +35,7 @@ const Progress = React.forwardRef<
       />
     </ProgressPrimitive.Root>
     {showValue && (
-      <span className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-full pl-3 text-xs font-mono text-neon-cyan">
+      <span className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-full pl-3 text-xs font-mono text-foreground-muted">
         {value}%
       </span>
     )}

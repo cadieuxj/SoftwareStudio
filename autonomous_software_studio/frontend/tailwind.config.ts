@@ -10,95 +10,84 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // 2055 Futuristic Cyberpunk Theme
         background: {
-          DEFAULT: '#0a0a0f',
-          secondary: '#12121a',
-          tertiary: '#1a1a25',
-          card: 'rgba(20, 20, 30, 0.8)',
+          DEFAULT: '#09090b',       // zinc-950
+          secondary: '#111113',
+          tertiary: '#18181b',      // zinc-900
+          card: 'rgba(17, 17, 19, 0.9)',
         },
         foreground: {
-          DEFAULT: '#e8e8f0',
-          muted: '#a0a0b0',
-          subtle: '#6a6a7a',
+          DEFAULT: '#f4f4f5',       // zinc-100
+          muted: '#a1a1aa',         // zinc-400
+          subtle: '#52525b',        // zinc-600
         },
+        // Professional semantic palette — class names kept for backward-compat
         neon: {
-          cyan: '#00ffff',
-          magenta: '#ff00ff',
-          green: '#00ff88',
-          orange: '#ff8800',
-          purple: '#8800ff',
-          blue: '#0088ff',
-          pink: '#ff0088',
-          yellow: '#ffff00',
+          cyan: '#6366f1',          // indigo-500  (primary accent)
+          magenta: '#8b5cf6',       // violet-500  (secondary)
+          green: '#10b981',         // emerald-500 (success)
+          orange: '#f59e0b',        // amber-500   (warning)
+          purple: '#a855f7',        // purple-500
+          blue: '#3b82f6',          // blue-500
+          pink: '#ec4899',          // pink-500
+          yellow: '#eab308',        // yellow-500
         },
         status: {
-          pending: '#ff8800',
-          running: '#00ffff',
-          awaiting: '#ff00ff',
-          completed: '#00ff88',
-          failed: '#ff4444',
-          expired: '#666688',
+          pending: '#f59e0b',
+          running: '#6366f1',
+          awaiting: '#8b5cf6',
+          completed: '#10b981',
+          failed: '#ef4444',
+          expired: '#52525b',
         },
         border: {
-          DEFAULT: 'rgba(100, 100, 150, 0.3)',
-          glow: 'rgba(0, 255, 255, 0.5)',
+          DEFAULT: 'rgba(255, 255, 255, 0.07)',
+          glow: 'rgba(99, 102, 241, 0.25)',
         },
       },
       fontFamily: {
-        display: ['Orbitron', 'sans-serif'],
-        body: ['Rajdhani', 'sans-serif'],
+        display: ['Inter', 'system-ui', 'sans-serif'],
+        body: ['Inter', 'system-ui', 'sans-serif'],
         mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
       },
       boxShadow: {
-        'neon-cyan': '0 0 20px rgba(0, 255, 255, 0.5), 0 0 40px rgba(0, 255, 255, 0.3)',
-        'neon-magenta': '0 0 20px rgba(255, 0, 255, 0.5), 0 0 40px rgba(255, 0, 255, 0.3)',
-        'neon-green': '0 0 20px rgba(0, 255, 136, 0.5), 0 0 40px rgba(0, 255, 136, 0.3)',
-        'neon-orange': '0 0 20px rgba(255, 136, 0, 0.5), 0 0 40px rgba(255, 136, 0, 0.3)',
-        'glass': '0 8px 32px rgba(0, 0, 0, 0.4)',
-        'glow': '0 0 30px rgba(0, 255, 255, 0.2)',
+        'neon-cyan':
+          '0 0 0 1px rgba(99, 102, 241, 0.25), 0 4px 12px rgba(0, 0, 0, 0.4)',
+        'neon-magenta':
+          '0 0 0 1px rgba(139, 92, 246, 0.25), 0 4px 12px rgba(0, 0, 0, 0.4)',
+        'neon-green':
+          '0 0 0 1px rgba(16, 185, 129, 0.25), 0 4px 12px rgba(0, 0, 0, 0.4)',
+        'neon-orange':
+          '0 0 0 1px rgba(245, 158, 11, 0.25), 0 4px 12px rgba(0, 0, 0, 0.4)',
+        glass:
+          '0 8px 32px rgba(0, 0, 0, 0.4), 0 1px 0 rgba(255, 255, 255, 0.04) inset',
+        glow: '0 0 0 1px rgba(99, 102, 241, 0.2), 0 4px 20px rgba(99, 102, 241, 0.1)',
+        card: '0 1px 3px rgba(0,0,0,0.4), 0 1px 0 rgba(255,255,255,0.03) inset',
       },
       backgroundImage: {
-        'grid-pattern': `
-          linear-gradient(rgba(0, 255, 255, 0.03) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(0, 255, 255, 0.03) 1px, transparent 1px)
-        `,
         'gradient-radial': 'radial-gradient(ellipse at center, var(--tw-gradient-stops))',
         'gradient-conic': 'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))',
-        'cyber-gradient': 'linear-gradient(135deg, rgba(0, 255, 255, 0.1) 0%, rgba(255, 0, 255, 0.1) 100%)',
+        // subtle ambient gradient for page background
+        'ambient':
+          'radial-gradient(ellipse 80% 50% at 50% -20%, rgba(99,102,241,0.08), transparent)',
       },
       animation: {
-        'pulse-glow': 'pulseGlow 2s ease-in-out infinite',
-        'scan-line': 'scanLine 8s linear infinite',
-        'float': 'float 6s ease-in-out infinite',
-        'shimmer': 'shimmer 2s linear infinite',
-        'border-glow': 'borderGlow 3s ease-in-out infinite',
-        'data-stream': 'dataStream 20s linear infinite',
+        'fade-in': 'fadeIn 0.15s ease-out',
+        'slide-up': 'slideUp 0.15s ease-out',
+        'pulse-glow': 'pulseSubtle 2s ease-in-out infinite',
       },
       keyframes: {
-        pulseGlow: {
-          '0%, 100%': { opacity: '1', boxShadow: '0 0 20px rgba(0, 255, 255, 0.5)' },
-          '50%': { opacity: '0.7', boxShadow: '0 0 40px rgba(0, 255, 255, 0.8)' },
+        fadeIn: {
+          '0%': { opacity: '0', transform: 'translateY(4px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
         },
-        scanLine: {
-          '0%': { transform: 'translateY(-100%)' },
-          '100%': { transform: 'translateY(100vh)' },
+        slideUp: {
+          '0%': { opacity: '0', transform: 'translateY(8px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
         },
-        float: {
-          '0%, 100%': { transform: 'translateY(0)' },
-          '50%': { transform: 'translateY(-10px)' },
-        },
-        shimmer: {
-          '0%': { backgroundPosition: '-200% 0' },
-          '100%': { backgroundPosition: '200% 0' },
-        },
-        borderGlow: {
-          '0%, 100%': { borderColor: 'rgba(0, 255, 255, 0.5)' },
-          '50%': { borderColor: 'rgba(255, 0, 255, 0.5)' },
-        },
-        dataStream: {
-          '0%': { backgroundPosition: '0% 0%' },
-          '100%': { backgroundPosition: '100% 100%' },
+        pulseSubtle: {
+          '0%, 100%': { opacity: '1' },
+          '50%': { opacity: '0.6' },
         },
       },
       backdropBlur: {
