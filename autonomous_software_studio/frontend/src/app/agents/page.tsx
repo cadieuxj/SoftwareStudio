@@ -18,6 +18,7 @@ import {
   AlertCircle,
 } from 'lucide-react'
 import { agentSettingsApi, queryKeys } from '@/lib/api'
+import { DEFAULT_PROMPTS } from '@/lib/defaultPrompts'
 import { cn, getAgentLabel, getAgentColor, formatDateTime } from '@/lib/utils'
 import { useAgentSettingsStore } from '@/store'
 import type { AgentRole, AgentSettings, Provider, AuthType, UsageLimitUnit, PromptVersion } from '@/types'
@@ -102,10 +103,11 @@ export default function AgentsPage() {
     queryFn: () => agentSettingsApi.get(selectedAgent),
   })
 
-  // Fetch active prompt
+  // Fetch active prompt — falls back to the bundled default when the backend is offline
   const { data: activePrompt } = useQuery({
     queryKey: queryKeys.agentActivePrompt(selectedAgent),
     queryFn: () => agentSettingsApi.getActivePrompt(selectedAgent),
+    retry: false,
   })
 
   // Fetch prompt history
@@ -127,13 +129,13 @@ export default function AgentsPage() {
     }
   }, [agentSettings])
 
-  // Update prompt content when active prompt loads
+  // When the active prompt loads from the backend, use it; otherwise fall back to the
+  // bundled default so the editor is never empty.
   useEffect(() => {
-    if (activePrompt) {
-      setPromptEditorContent(activePrompt.content)
-      setPromptEditorDirty(false)
-    }
-  }, [activePrompt, setPromptEditorContent, setPromptEditorDirty])
+    const content = activePrompt?.content ?? DEFAULT_PROMPTS[selectedAgent] ?? ''
+    setPromptEditorContent(content)
+    setPromptEditorDirty(false)
+  }, [activePrompt, selectedAgent, setPromptEditorContent, setPromptEditorDirty])
 
   // Save settings mutation
   const saveMutation = useMutation({
@@ -561,9 +563,14 @@ export default function AgentsPage() {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     {/* Active Prompt Info */}
-                    {activePrompt && (
+                    {activePrompt ? (
                       <div className="text-xs text-foreground-muted">
                         Active version: {activePrompt.version}
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5 text-xs text-amber-500/80">
+                        <AlertCircle className="h-3.5 w-3.5" />
+                        Showing default template — backend offline. Edit freely; saves when backend is available.
                       </div>
                     )}
 
