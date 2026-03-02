@@ -10,7 +10,10 @@ import {
   AlertCircle,
   CheckCircle2,
   Clock,
+  Sun,
+  Moon,
 } from 'lucide-react'
+import { UserButton } from '@clerk/nextjs'
 import { cn } from '@/lib/utils'
 import { metricsApi, queryKeys } from '@/lib/api'
 import { useUIStore, useCreateSessionModal } from '@/store'
@@ -27,7 +30,7 @@ import {
 
 export function Header() {
   const [searchQuery, setSearchQuery] = useState('')
-  const { sidebarOpen } = useUIStore()
+  const { sidebarOpen, theme, setTheme } = useUIStore()
   const openCreateModal = useCreateSessionModal((s) => s.open)
 
   const { data: health } = useQuery({
@@ -48,8 +51,8 @@ export function Header() {
     <header
       className={cn(
         'fixed top-0 right-0 z-30 h-14',
-        'bg-background/80 backdrop-blur-md',
-        'border-b border-white/[0.06]',
+        'bg-background backdrop-blur-md',
+        'border-b border-border',
         'flex items-center justify-between px-5 gap-4',
         'transition-all duration-200',
         sidebarOpen ? 'left-[220px]' : 'left-[60px]'
@@ -166,11 +169,35 @@ export function Header() {
           </DropdownMenuContent>
         </DropdownMenu>
 
+        {/* Theme toggle */}
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+          aria-label="Toggle theme"
+        >
+          {theme === 'dark'
+            ? <Sun className="h-4 w-4" />
+            : <Moon className="h-4 w-4" />
+          }
+        </Button>
+
         {/* New Session */}
         <Button size="sm" onClick={() => openCreateModal()} className="gap-1.5">
           <Plus className="h-3.5 w-3.5" />
           <span className="hidden sm:inline">New Session</span>
         </Button>
+
+        {/* User profile */}
+        <UserButton
+          afterSignOutUrl="/sign-in"
+          appearance={{
+            elements: {
+              avatarBox: 'h-8 w-8 rounded-lg',
+              userButtonTrigger: 'rounded-lg focus:ring-1 focus:ring-indigo-500/50',
+            },
+          }}
+        />
       </div>
     </header>
   )

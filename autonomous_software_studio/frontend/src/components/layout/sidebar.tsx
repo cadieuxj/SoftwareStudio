@@ -10,7 +10,7 @@ import {
   CheckCircle2,
   ScrollText,
   Github,
-  FolderKanban,
+  CalendarRange,
   Bot,
   ChevronLeft,
   Terminal,
@@ -23,7 +23,7 @@ import { useUIStore } from '@/store'
 const navItems = [
   { label: 'Dashboard',  href: '/',          icon: LayoutDashboard },
   { label: 'Sessions',   href: '/sessions',  icon: PlayCircle      },
-  { label: 'Projects',   href: '/projects',  icon: FolderKanban    },
+  { label: 'Timeline',   href: '/projects',  icon: CalendarRange   },
   { label: 'Team',       href: '/team',      icon: Users           },
   { label: 'Artifacts',  href: '/artifacts', icon: FileText        },
   { label: 'Approvals',  href: '/approvals', icon: CheckCircle2    },
@@ -42,10 +42,10 @@ export function Sidebar() {
       initial={false}
       animate={{ width: sidebarOpen ? 220 : 60 }}
       transition={{ duration: 0.2, ease: 'easeInOut' }}
-      className="fixed left-0 top-0 z-40 h-screen flex flex-col bg-background-secondary border-r border-white/[0.06] overflow-hidden"
+      className="fixed left-0 top-0 z-40 h-screen flex flex-col bg-background-secondary border-r border-border overflow-hidden"
     >
       {/* Logo */}
-      <div className="flex h-14 items-center gap-3 px-3.5 border-b border-white/[0.06] flex-shrink-0">
+      <div className="flex h-14 items-center gap-3 px-3.5 border-b border-border flex-shrink-0">
         <Link href="/" className="flex items-center gap-3 min-w-0">
           <div className="flex-shrink-0 h-8 w-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center">
             <Zap className="h-4 w-4 text-indigo-400" />
@@ -87,7 +87,7 @@ export function Sidebar() {
                     'relative flex items-center gap-3 h-9 px-2.5 rounded-md',
                     'text-sm transition-colors duration-150 group',
                     isActive
-                      ? 'bg-indigo-500/10 text-indigo-300'
+                      ? 'bg-indigo-500/10 text-indigo-400 font-medium'
                       : 'text-foreground-muted hover:text-foreground hover:bg-white/[0.05]'
                   )}
                 >
@@ -124,7 +124,7 @@ export function Sidebar() {
       </nav>
 
       {/* Collapse toggle */}
-      <div className="border-t border-white/[0.06] p-3 flex-shrink-0">
+      <div className="border-t border-border p-3 flex-shrink-0">
         <button
           onClick={toggleSidebar}
           className="flex items-center justify-center h-8 w-8 rounded-md text-foreground-subtle hover:text-foreground hover:bg-white/[0.06] transition-colors"

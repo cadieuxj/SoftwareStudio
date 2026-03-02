@@ -11,15 +11,15 @@ const config: Config = {
     extend: {
       colors: {
         background: {
-          DEFAULT: '#09090b',       // zinc-950
-          secondary: '#111113',
-          tertiary: '#18181b',      // zinc-900
-          card: 'rgba(17, 17, 19, 0.9)',
+          DEFAULT: 'var(--background)',
+          secondary: 'var(--background-secondary)',
+          tertiary: 'var(--background-tertiary)',
+          card: 'var(--background-card)',
         },
         foreground: {
-          DEFAULT: '#f4f4f5',       // zinc-100
-          muted: '#a1a1aa',         // zinc-400
-          subtle: '#52525b',        // zinc-600
+          DEFAULT: 'var(--foreground)',
+          muted: 'var(--foreground-muted)',
+          subtle: 'var(--foreground-subtle)',
         },
         // Professional semantic palette — class names kept for backward-compat
         neon: {
@@ -41,7 +41,7 @@ const config: Config = {
           expired: '#52525b',
         },
         border: {
-          DEFAULT: 'rgba(255, 255, 255, 0.07)',
+          DEFAULT: 'var(--border)',
           glow: 'rgba(99, 102, 241, 0.25)',
         },
       },
