@@ -2,11 +2,12 @@
 
 ## Overview
 
-Autonomous Software Studio uses a layered configuration system with multiple sources:
-1. Environment variables (highest priority)
-2. `.env` file
-3. YAML configuration files
-4. Default values (lowest priority)
+Sovereign AI uses a layered configuration system with two separate environment files:
+
+- **Backend** (`.env`, copied from `.env.template`) — Python orchestrator, PostgreSQL, Redis, GitHub
+- **Frontend** (`.env.local`, copied from `frontend/.env.local.example`) — Clerk, DATABASE_URL (Drizzle), Portkey, E2B
+
+Priority within each layer: environment variables → `.env` file → YAML files → defaults.
 
 ---
 
@@ -71,11 +72,57 @@ Autonomous Software Studio uses a layered configuration system with multiple sou
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `ORCHESTRATOR_PORT` | 8000 | Orchestrator API port |
-| `DASHBOARD_PORT` | 8501 | Dashboard UI port |
 | `PROMETHEUS_PORT` | 9090 | Prometheus port |
 | `GRAFANA_PORT` | 3000 | Grafana port |
 | `POSTGRES_PORT` | 5432 | PostgreSQL port |
 | `REDIS_PORT` | 6379 | Redis port |
+
+---
+
+## Frontend environment variables (`.env.local`)
+
+### Clerk B2B Authentication
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Yes | Clerk publishable key |
+| `CLERK_SECRET_KEY` | Yes | Clerk server-side secret key |
+| `CLERK_WEBHOOK_SECRET` | Yes | Svix webhook signing secret |
+| `NEXT_PUBLIC_CLERK_SIGN_IN_URL` | No | Default: `/sign-in` |
+| `NEXT_PUBLIC_CLERK_SIGN_UP_URL` | No | Default: `/sign-up` |
+
+### Database (Drizzle ORM / node-postgres)
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `DATABASE_URL` | Yes | PostgreSQL connection string for the Next.js app |
+
+### AI Gateway (Portkey)
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `PORTKEY_API_KEY` | Yes | Portkey platform API key |
+| `PORTKEY_DEFAULT_VIRTUAL_KEY` | Yes | Default Portkey virtual key (maps to Anthropic) |
+
+### Code Execution (E2B)
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `E2B_API_KEY` | Yes | E2B Code Interpreter API key |
+
+### Backend proxy
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `NEXT_PUBLIC_API_BASE_URL` | `http://localhost:8000` | Python orchestrator base URL |
+
+### Optional
+
+| Variable | Description |
+|----------|-------------|
+| `GITHUB_CLIENT_ID` | GitHub OAuth app client ID |
+| `GITHUB_CLIENT_SECRET` | GitHub OAuth app client secret |
+| `NEXT_PUBLIC_SENTRY_DSN` | Sentry error tracking DSN |
 
 ### Claude CLI Configuration
 
