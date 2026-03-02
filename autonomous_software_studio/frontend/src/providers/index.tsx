@@ -2,8 +2,24 @@
 
 import { ClerkProvider } from '@clerk/nextjs'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { useState, type ReactNode } from 'react'
+import { useState, useEffect, type ReactNode } from 'react'
 import { Toaster } from 'react-hot-toast'
+import { useUIStore } from '@/store'
+
+function ThemeSync() {
+  const theme = useUIStore((s) => s.theme)
+  useEffect(() => {
+    const root = document.documentElement
+    if (theme === 'light') {
+      root.classList.remove('dark')
+      root.classList.add('light')
+    } else {
+      root.classList.remove('light')
+      root.classList.add('dark')
+    }
+  }, [theme])
+  return null
+}
 
 interface ProvidersProps {
   children: ReactNode
@@ -38,39 +54,29 @@ export function Providers({ children }: ProvidersProps) {
   return (
     <ClerkProvider>
       <QueryClientProvider client={queryClient}>
+        <ThemeSync />
         {children}
         <Toaster
-        position="bottom-right"
-        toastOptions={{
-          duration: 4000,
-          style: {
-            background: 'rgba(20, 20, 30, 0.95)',
-            color: '#e8e8f0',
-            border: '1px solid rgba(100, 100, 150, 0.3)',
-            borderRadius: '12px',
-            backdropFilter: 'blur(12px)',
-            fontFamily: 'Rajdhani, sans-serif',
-          },
-          success: {
-            iconTheme: {
-              primary: '#00ff88',
-              secondary: '#0a0a0f',
-            },
+          position="bottom-right"
+          toastOptions={{
+            duration: 4000,
             style: {
-              borderColor: 'rgba(0, 255, 136, 0.5)',
+              background: 'var(--background-secondary)',
+              color: 'var(--foreground)',
+              border: '1px solid var(--border-strong, rgba(99,102,241,0.2))',
+              borderRadius: '10px',
+              backdropFilter: 'blur(12px)',
+              fontFamily: 'Inter, system-ui, sans-serif',
+              fontSize: '13px',
             },
-          },
-          error: {
-            iconTheme: {
-              primary: '#ff4444',
-              secondary: '#0a0a0f',
+            success: {
+              iconTheme: { primary: '#10b981', secondary: 'transparent' },
             },
-            style: {
-              borderColor: 'rgba(255, 68, 68, 0.5)',
+            error: {
+              iconTheme: { primary: '#ef4444', secondary: 'transparent' },
             },
-          },
-        }}
-          />
+          }}
+        />
       </QueryClientProvider>
     </ClerkProvider>
   )

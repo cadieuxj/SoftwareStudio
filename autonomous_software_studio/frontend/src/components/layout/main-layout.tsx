@@ -21,7 +21,7 @@ export function MainLayout({ children }: MainLayoutProps) {
         className="fixed inset-0 pointer-events-none"
         style={{
           background:
-            'radial-gradient(ellipse 80% 40% at 50% -10%, rgba(99,102,241,0.06), transparent)',
+            'radial-gradient(ellipse 80% 40% at 50% -10%, rgba(99,102,241,0.04), transparent)',
         }}
       />
 
