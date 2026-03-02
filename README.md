@@ -103,10 +103,9 @@ SoftwareStudio/
 ├── package.json                       ← root npm scripts
 │
 └── autonomous_software_studio/
-    ├── README.md                      ← legacy stub (superseded by this file)
+    ├── README.md                      ← quick-reference stub → see root README
     ├── docker-compose.yml             ← full-stack service definitions
     ├── Dockerfile                     ← Python orchestrator image
-    ├── Dockerfile                     ← Python orchestrator image (primary)
     ├── pyproject.toml                 ← Python project metadata & tool config
     ├── requirements.txt               ← Python dependencies
     ├── .env.template                  ← backend env var template
@@ -392,8 +391,8 @@ MCP server configurations live in `config/mcp_servers.json`. Each agent profile 
 | `/` | Dashboard | Metrics overview, live session counts, recent activity |
 | `/sessions` | Sessions | Full session list with status filtering |
 | `/sessions/[id]` | Session Detail | Live phase tracking, artifact preview, approve/reject actions |
-| `/projects` | Projects | Gantt timeline — sessions grouped by project, zoom controls |
-| `/team` | Team | Lite team — org member list, roles, session counts, last-active |
+| `/projects` | Timeline | Gantt timeline — sessions grouped by project, zoom controls (1d / 7d / 30d / all) |
+| `/team` | Team | Org member list, roles, session counts, last-active |
 | `/approvals` | Approvals Queue | All sessions in `awaiting_approval` state |
 | `/artifacts` | Artifacts Browser | Browse PRDs, tech specs, bug reports |
 | `/agents` | Agent Config | Provider settings, API keys, prompt editor with version history |
@@ -450,24 +449,39 @@ Page Component
 
 ### Design System
 
-The UI uses a custom professional design system built on Tailwind. Tokens are in `tailwind.config.ts`. Key tokens:
+The UI uses a custom professional design system built on Tailwind CSS with **full light / dark mode support**. Tokens are CSS variables defined in `src/app/globals.css` and referenced by `tailwind.config.ts`.
+
+**Theme switching** — `useUIStore().setTheme('light' | 'dark')` persists the preference to localStorage. `ThemeSync` (inside `Providers`) applies the `dark` or `light` class to `<html>` on the client. The toggle button (Sun / Moon) is in the top-right header.
+
+**Semantic color tokens (CSS variables):**
+
+| Token | Dark value | Light value | Usage |
+|---|---|---|---|
+| `--background` | `#09090b` | `#f8f9fb` | Page background |
+| `--background-secondary` | `#111113` | `#ffffff` | Cards, sidebar |
+| `--background-tertiary` | `#18181b` | `#f0f2f5` | Nested surfaces |
+| `--foreground` | `#f4f4f5` | `#0f172a` | Body text |
+| `--foreground-muted` | `#a1a1aa` | `#475569` | Secondary text |
+| `--foreground-subtle` | `#52525b` | `#94a3b8` | Placeholder, timestamps |
+| `--border` | `rgba(255,255,255,0.07)` | `rgba(15,23,42,0.08)` | Card / layout borders |
+| `--accent` | `#6366f1` | `#4f46e5` | Primary accent (Indigo) |
+
+**Static accent palette** (Tailwind `neon-*`, unchanged by theme):
 
 | Token | Value | Usage |
 |---|---|---|
-| `neon-cyan` | `#6366f1` (Indigo 500) | Primary accent, buttons, active states |
-| `neon-magenta` | `#8b5cf6` (Violet 500) | Secondary accent, awaiting status |
-| `neon-green` | `#10b981` (Emerald 500) | Success, completed status |
-| `neon-orange` | `#f59e0b` (Amber 500) | Warning, pending status |
-| `background` | `#09090b` (Zinc 950) | Page background |
-| `background-secondary` | `#111113` | Cards, sidebar |
+| `neon-cyan` | `#6366f1` (Indigo 500) | Buttons, active nav, running state |
+| `neon-magenta` | `#8b5cf6` (Violet 500) | Awaiting-approval state |
+| `neon-green` | `#10b981` (Emerald 500) | Completed / success state |
+| `neon-orange` | `#f59e0b` (Amber 500) | Pending / warning state |
 
 Components live in `src/components/ui/` and are re-exported from `src/components/ui/index.ts`. All are built on Radix UI primitives with Tailwind class overrides.
 
 ### State Management
 
-Three Zustand stores in `src/store/`:
+Three Zustand stores in `src/store/` (all persisted to `localStorage`):
 
-- **`useUIStore`** — sidebar open/closed, global UI state
+- **`useUIStore`** — sidebar open/closed, `theme: 'dark' | 'light'`, log refresh settings
 - **`useCreateSessionModal`** — modal open state + prefill values
 - **`useAgentSettingsStore`** — selected agent, prompt editor content + dirty flag
 
@@ -1165,4 +1179,4 @@ docker compose up -d
 
 ---
 
-*Last updated: 2026-03-01 | Branch: `claude/sovereign-ai-development-0cr6w`*
+*Last updated: 2026-03-02 | Branch: `claude/sovereign-ai-development-0cr6w`*

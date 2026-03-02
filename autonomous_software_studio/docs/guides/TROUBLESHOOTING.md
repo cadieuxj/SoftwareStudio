@@ -13,7 +13,8 @@ docker compose ps
 # ass_postgres     Up (healthy)    0.0.0.0:5432->5432/tcp
 # ass_redis        Up (healthy)    0.0.0.0:6379->6379/tcp
 # ass_orchestrator Up (healthy)    0.0.0.0:8000->8000/tcp
-# ass_dashboard    Up (healthy)    0.0.0.0:8501->8501/tcp
+#
+# Note: the frontend is deployed on Vercel — there is no dashboard container.
 ```
 
 ### Check Logs
@@ -25,8 +26,8 @@ docker compose logs
 # Specific service
 docker compose logs orchestrator
 
-# Follow logs in real-time
-docker compose logs -f dashboard
+# Follow orchestrator logs in real-time
+docker compose logs -f orchestrator
 
 # Last 100 lines
 docker compose logs --tail 100 orchestrator
@@ -37,9 +38,6 @@ docker compose logs --tail 100 orchestrator
 ```bash
 # Orchestrator health
 curl http://localhost:8000/healthz
-
-# Dashboard health
-curl http://localhost:8501/_stcore/health
 
 # PostgreSQL
 docker compose exec postgres pg_isready -U softwarestudio
@@ -76,7 +74,6 @@ ass_orchestrator exited with code 1
 3. Check for port conflicts:
    ```bash
    lsof -i :8000
-   lsof -i :8501
    ```
 
 4. Rebuild images:
